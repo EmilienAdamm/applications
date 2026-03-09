@@ -1,0 +1,62 @@
+import { OptionListEditor } from "@/components/job-tracker/option-list-editor"
+import type { OptionCategory, TrackerOptions } from "@/lib/job-tracker/types"
+
+interface SettingsTabProps {
+  options: TrackerOptions
+  onAddOption: (category: OptionCategory, value: string, color: string) => void
+  onRenameOption: (category: OptionCategory, id: string, newValue: string, newColor: string) => void
+  onDeleteOption: (category: OptionCategory, id: string) => void
+}
+
+export function SettingsTab({
+  options,
+  onAddOption,
+  onRenameOption,
+  onDeleteOption,
+}: SettingsTabProps) {
+  return (
+    <section className="space-y-4">
+      <header className="rounded-2xl border border-white/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-zinc-900/80">
+        <h2 className="text-xl font-semibold">Settings & Administration</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage the dropdown options for each field. Changes apply to all your applications.
+        </p>
+      </header>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <OptionListEditor
+          title="CV used options"
+          description="Values used in the 'CV used' column."
+          values={options.cvUsed}
+          onAdd={(value, color) => onAddOption("cvUsed", value, color)}
+          onRename={(id, newValue, newColor) => onRenameOption("cvUsed", id, newValue, newColor)}
+          onDelete={(id) => onDeleteOption("cvUsed", id)}
+        />
+        <OptionListEditor
+          title="Email used options"
+          description="Values used in the 'Email used' column."
+          values={options.emailUsed}
+          onAdd={(value, color) => onAddOption("emailUsed", value, color)}
+          onRename={(id, newValue, newColor) => onRenameOption("emailUsed", id, newValue, newColor)}
+          onDelete={(id) => onDeleteOption("emailUsed", id)}
+        />
+        <OptionListEditor
+          title="Status options"
+          description="Values used in the 'Status' column."
+          values={options.status}
+          onAdd={(value, color) => onAddOption("status", value, color)}
+          onRename={(id, newValue, newColor) => onRenameOption("status", id, newValue, newColor)}
+          onDelete={(id) => onDeleteOption("status", id)}
+        />
+        <OptionListEditor
+          title="Final Status options"
+          description="Values used in the 'Final Status' column."
+          values={options.finalStatus}
+          onAdd={(value, color) => onAddOption("finalStatus", value, color)}
+          onRename={(id, newValue, newColor) => onRenameOption("finalStatus", id, newValue, newColor)}
+          onDelete={(id) => onDeleteOption("finalStatus", id)}
+        />
+      </div>
+    </section>
+  )
+}

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils";
+import { Metadata } from "next";
 
 const fontSans = Geist({
   subsets: ["latin"],
@@ -13,6 +14,11 @@ const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 })
+
+export const metadata: Metadata = {
+  title: "Job Tracker",
+  description: "Track your job applications and get insights on your job search",
+}
 
 export default function RootLayout({
   children,
