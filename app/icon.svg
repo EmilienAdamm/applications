@@ -1,0 +1,38 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="4" y="4" width="56" height="56" rx="18" fill="url(#bg)" />
+  <rect x="6" y="6" width="52" height="52" rx="16" stroke="url(#ring)" stroke-width="2" />
+  <path
+    d="M25.5 24V21C25.5 18.5147 27.5147 16.5 30 16.5H34C36.4853 16.5 38.5 18.5147 38.5 21V24"
+    stroke="white"
+    stroke-width="3.5"
+    stroke-linecap="round"
+  />
+  <rect
+    x="16.5"
+    y="24"
+    width="31"
+    height="23.5"
+    rx="6.5"
+    fill="white"
+    fill-opacity="0.12"
+    stroke="white"
+    stroke-width="3.5"
+  />
+  <path
+    d="M24.5 35L29.5 40L39.5 30"
+    stroke="white"
+    stroke-width="4.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <defs>
+    <linearGradient id="bg" x1="10" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#34D399" />
+      <stop offset="1" stop-color="#0F766E" />
+    </linearGradient>
+    <linearGradient id="ring" x1="12" y1="8" x2="52" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.52" />
+      <stop offset="1" stop-color="white" stop-opacity="0.14" />
+    </linearGradient>
+  </defs>
+</svg>
