@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import {
   BarChart3,
   BriefcaseBusiness,
@@ -52,8 +51,6 @@ export function SidebarNav({
   collapsed,
   onToggleCollapse,
 }: SidebarNavProps) {
-  const router = useRouter()
-
   return (
     <>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 px-2 py-2 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90 md:hidden">
@@ -66,8 +63,7 @@ export function SidebarNav({
               <Link
                 key={item.key}
                 href={item.href}
-                onMouseEnter={() => router.prefetch(item.href)}
-                onFocus={() => router.prefetch(item.href)}
+                prefetch
                 className={cn(
                   "flex h-12 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-medium transition",
                   isActive
@@ -139,8 +135,7 @@ export function SidebarNav({
                 <Link
                   key={item.key}
                   href={item.href}
-                  onMouseEnter={() => router.prefetch(item.href)}
-                  onFocus={() => router.prefetch(item.href)}
+                  prefetch
                   className={cn(
                     "flex w-full items-center rounded-xl text-sm font-medium transition",
                     collapsed

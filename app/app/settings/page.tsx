@@ -1,6 +1,6 @@
 import { Metadata } from "next"
 
-import { getTrackerData } from "@/app/app/_lib/get-tracker-data"
+import { getSettingsPageData } from "@/app/app/_lib/get-tracker-data"
 import { SettingsPage } from "@/components/job-tracker/settings-page"
 
 export const metadata: Metadata = {
@@ -9,11 +9,6 @@ export const metadata: Metadata = {
 }
 
 export default async function SettingsRoutePage() {
-  const { applications, options } = await getTrackerData()
-  return (
-    <SettingsPage
-      initialApplications={applications}
-      initialOptions={options}
-    />
-  )
+  const { options } = await getSettingsPageData()
+  return <SettingsPage initialOptions={options} />
 }

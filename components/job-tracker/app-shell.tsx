@@ -1,5 +1,6 @@
 "use client"
 
+import { usePathname } from "next/navigation"
 import { useEffect, useState, type ReactNode } from "react"
 
 import { SidebarNav } from "@/components/job-tracker/sidebar-nav"
@@ -23,12 +24,19 @@ function tabTitle(activeTab: AppTab) {
   return "Settings"
 }
 
+function activeTabFromPathname(pathname: string): AppTab {
+  if (pathname.startsWith("/app/analysis")) return "analysis"
+  if (pathname.startsWith("/app/settings")) return "settings"
+  return "applications"
+}
+
 interface AppShellProps {
-  activeTab: AppTab
   children: ReactNode
 }
 
-export function AppShell({ activeTab, children }: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname()
+  const activeTab = activeTabFromPathname(pathname)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
       const storedValue = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)

@@ -1,28 +1,42 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useReducer } from "react"
 
 import { addOption, deleteOption, renameOption } from "@/app/app/actions"
-import { AppShell } from "@/components/job-tracker/app-shell"
-import { SettingsTab } from "@/components/job-tracker/settings-tab"
 import { trackerReducer } from "@/lib/job-tracker/reducer"
 import type {
-  JobApplication,
   OptionCategory,
   TrackerOptions,
 } from "@/lib/job-tracker/types"
 
+const SettingsTab = dynamic(
+  () =>
+    import("@/components/job-tracker/settings-tab").then((module) => ({
+      default: module.SettingsTab,
+    })),
+  {
+    loading: () => (
+      <div className="space-y-4">
+        <div className="h-24 animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80" />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="h-64 animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80" />
+          <div className="h-64 animate-pulse rounded-2xl bg-zinc-200/80 dark:bg-zinc-800/80" />
+        </div>
+      </div>
+    ),
+  }
+)
+
 interface SettingsPageProps {
-  initialApplications: JobApplication[]
   initialOptions: TrackerOptions
 }
 
 export function SettingsPage({
-  initialApplications,
   initialOptions,
 }: SettingsPageProps) {
   const [state, dispatch] = useReducer(trackerReducer, {
-    applications: initialApplications,
+    applications: [],
     options: initialOptions,
   })
 
@@ -69,13 +83,11 @@ export function SettingsPage({
   }
 
   return (
-    <AppShell activeTab="settings">
-      <SettingsTab
-        options={state.options}
-        onAddOption={handleAddOption}
-        onRenameOption={handleRenameOption}
-        onDeleteOption={handleDeleteOption}
-      />
-    </AppShell>
+    <SettingsTab
+      options={state.options}
+      onAddOption={handleAddOption}
+      onRenameOption={handleRenameOption}
+      onDeleteOption={handleDeleteOption}
+    />
   )
 }

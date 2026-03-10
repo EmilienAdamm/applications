@@ -1,6 +1,6 @@
 import { Metadata } from "next"
 
-import { getTrackerData } from "@/app/app/_lib/get-tracker-data"
+import { getAnalysisPageData } from "@/app/app/_lib/get-tracker-data"
 import { AnalysisPage } from "@/components/job-tracker/analysis-page"
 
 export const metadata: Metadata = {
@@ -9,6 +9,6 @@ export const metadata: Metadata = {
 }
 
 export default async function AnalysisRoutePage() {
-  const { applications } = await getTrackerData()
+  const { applications } = await getAnalysisPageData()
   return <AnalysisPage applications={applications} />
 }

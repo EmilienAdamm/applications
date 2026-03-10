@@ -9,7 +9,6 @@ import {
   type ParsedImportRow,
   updateApplicationField,
 } from "@/app/app/actions"
-import { AppShell } from "@/components/job-tracker/app-shell"
 import { ApplicationsTab } from "@/components/job-tracker/applications-tab"
 import { trackerReducer } from "@/lib/job-tracker/reducer"
 import type {
@@ -168,17 +167,15 @@ export function ApplicationsPage({
   }
 
   return (
-    <AppShell activeTab="applications">
-      <ApplicationsTab
-        applications={state.applications}
-        options={state.options}
-        stats={stats}
-        onAddApplication={handleAddApplication}
-        onDeleteApplication={handleDeleteApplication}
-        onUpdateApplicationField={handleUpdateApplicationField}
-        onImport={handleImport}
-        onExport={handleExport}
-      />
-    </AppShell>
+    <ApplicationsTab
+      applications={state.applications}
+      options={state.options}
+      stats={stats}
+      onAddApplication={handleAddApplication}
+      onDeleteApplication={handleDeleteApplication}
+      onUpdateApplicationField={handleUpdateApplicationField}
+      onImport={handleImport}
+      onExport={handleExport}
+    />
   )
 }
