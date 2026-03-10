@@ -1,10 +1,11 @@
 import { Geist, Geist_Mono } from "next/font/google"
+import { Metadata } from "next"
+import { Analytics } from "@vercel/analytics/next"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
-import { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/next"
+import { ToastProvider } from "@/components/ui/toast-provider"
+import { cn } from "@/lib/utils"
 
 const fontSans = Geist({
   subsets: ["latin"],
@@ -33,7 +34,9 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", fontSans.variable)}
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

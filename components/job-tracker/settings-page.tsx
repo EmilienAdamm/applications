@@ -4,6 +4,7 @@ import dynamic from "next/dynamic"
 import { useReducer } from "react"
 
 import { addOption, deleteOption, renameOption } from "@/app/app/actions"
+import { useToast } from "@/components/ui/toast-provider"
 import { trackerReducer } from "@/lib/job-tracker/reducer"
 import type {
   OptionCategory,
@@ -32,9 +33,17 @@ interface SettingsPageProps {
   initialOptions: TrackerOptions
 }
 
+function optionCategoryLabel(category: OptionCategory) {
+  if (category === "cvUsed") return "Resume Used"
+  if (category === "emailUsed") return "Email Used"
+  if (category === "finalStatus") return "Final Status"
+  return "Status"
+}
+
 export function SettingsPage({
   initialOptions,
 }: SettingsPageProps) {
+  const { success } = useToast()
   const [state, dispatch] = useReducer(trackerReducer, {
     applications: [],
     options: initialOptions,
@@ -47,6 +56,7 @@ export function SettingsPage({
   ) {
     const option = await addOption(category, value, color)
     dispatch({ type: "add_option", payload: { category, option } })
+    success(`${optionCategoryLabel(category)} option added`, option.value)
   }
 
   async function handleRenameOption(
@@ -58,28 +68,53 @@ export function SettingsPage({
     const currentOption = state.options[category].find((option) => option.id === id)
     if (!currentOption) return
 
+    const trimmedValue = newValue.trim()
+    if (!trimmedValue) return
+
+    await renameOption(id, trimmedValue, newColor)
+
     dispatch({
       type: "rename_option",
       payload: {
         category,
         id,
         currentValue: currentOption.value,
-        nextValue: newValue,
+        nextValue: trimmedValue,
         nextColor: newColor,
       },
     })
-    await renameOption(id, newValue, newColor)
+
+    const label = optionCategoryLabel(category)
+    const valueChanged = currentOption.value !== trimmedValue
+    const colorChanged = currentOption.color !== newColor
+
+    if (valueChanged && colorChanged) {
+      success(`${label} option updated`, `${currentOption.value} -> ${trimmedValue}`)
+      return
+    }
+
+    if (colorChanged) {
+      success(`${label} color updated`, trimmedValue)
+      return
+    }
+
+    if (valueChanged) {
+      success(`${label} option renamed`, `${currentOption.value} -> ${trimmedValue}`)
+    }
   }
 
   async function handleDeleteOption(category: OptionCategory, id: string) {
     const option = state.options[category].find((candidate) => candidate.id === id)
     if (!option) return
 
+    const fallback = await deleteOption(id)
+    if (!fallback) return
+
     dispatch({
       type: "delete_option",
       payload: { category, id, value: option.value },
     })
-    await deleteOption(id)
+    success(`${optionCategoryLabel(category)} option deleted`, option.value)
   }
 
   return (

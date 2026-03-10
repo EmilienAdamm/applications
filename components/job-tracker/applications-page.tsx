@@ -10,6 +10,7 @@ import {
   updateApplicationField,
 } from "@/app/app/actions"
 import { ApplicationsTab } from "@/components/job-tracker/applications-tab"
+import { useToast } from "@/components/ui/toast-provider"
 import { trackerReducer } from "@/lib/job-tracker/reducer"
 import type {
   ApplicationFieldKey,
@@ -31,6 +32,7 @@ export function ApplicationsPage({
   initialApplications,
   initialOptions,
 }: ApplicationsPageProps) {
+  const { success } = useToast()
   const [state, dispatch] = useReducer(trackerReducer, {
     applications: initialApplications,
     options: initialOptions,
@@ -50,6 +52,10 @@ export function ApplicationsPage({
   async function handleAddApplication(form: NewApplicationForm) {
     const id = await addApplication(form)
     dispatch({ type: "add_application", payload: { ...form, id } })
+    success(
+      "Application added",
+      `${form.jobPosition.trim()} at ${form.companyName.trim()}`
+    )
   }
 
   async function handleDeleteApplication(id: string) {
@@ -85,6 +91,7 @@ export function ApplicationsPage({
       "date of application": "dateOfApplication",
       "job offer link": "jobOfferLink",
       "cv used": "cvUsed",
+      "resume used": "cvUsed",
       "email used": "emailUsed",
       "status": "status",
       "final status": "finalStatus",
@@ -154,7 +161,7 @@ export function ApplicationsPage({
       "Job Position": application.jobPosition,
       "Date of Application": application.dateOfApplication,
       "Job Offer Link": application.jobOfferLink,
-      "CV Used": application.cvUsed,
+      "Resume Used": application.cvUsed,
       "Email Used": application.emailUsed,
       Status: application.status,
       "Final Status": application.finalStatus,

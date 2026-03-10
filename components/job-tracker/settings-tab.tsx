@@ -3,9 +3,9 @@ import type { OptionCategory, TrackerOptions } from "@/lib/job-tracker/types"
 
 interface SettingsTabProps {
   options: TrackerOptions
-  onAddOption: (category: OptionCategory, value: string, color: string) => void
-  onRenameOption: (category: OptionCategory, id: string, newValue: string, newColor: string) => void
-  onDeleteOption: (category: OptionCategory, id: string) => void
+  onAddOption: (category: OptionCategory, value: string, color: string) => Promise<void>
+  onRenameOption: (category: OptionCategory, id: string, newValue: string, newColor: string) => Promise<void>
+  onDeleteOption: (category: OptionCategory, id: string) => Promise<void>
 }
 
 export function SettingsTab({
@@ -25,8 +25,8 @@ export function SettingsTab({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <OptionListEditor
-          title="CV used options"
-          description="Values used in the 'CV used' column."
+          title="Resume Used options"
+          description="Values used in the 'Resume Used' column."
           values={options.cvUsed}
           onAdd={(value, color) => onAddOption("cvUsed", value, color)}
           onRename={(id, newValue, newColor) => onRenameOption("cvUsed", id, newValue, newColor)}

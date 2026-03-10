@@ -36,7 +36,7 @@ interface ApplicationsTabProps {
   applications: JobApplication[]
   options: TrackerOptions
   stats: TrackerStats
-  onAddApplication: (form: NewApplicationForm) => void
+  onAddApplication: (form: NewApplicationForm) => Promise<void>
   onDeleteApplication: (id: string) => void
   onUpdateApplicationField: (
     id: string,
@@ -61,7 +61,7 @@ const TABLE_COLUMNS: TableColumn[] = [
   { key: "jobPosition",       label: "Job Position",        type: "text",        defaultWidth: 440 },
   { key: "dateOfApplication", label: "Date of Application", type: "date",        defaultWidth: 170 },
   { key: "jobOfferLink",      label: "Job Offer Link",      type: "url",         defaultWidth: 170 },
-  { key: "cvUsed",            label: "CV Used",             type: "cvUsed",      defaultWidth: 140 },
+  { key: "cvUsed",            label: "Resume Used",         type: "cvUsed",      defaultWidth: 140 },
   { key: "emailUsed",         label: "Email Used",          type: "emailUsed",   defaultWidth: 190 },
   { key: "status",            label: "Status",              type: "status",      defaultWidth: 170 },
   { key: "finalStatus",       label: "Final Status",        type: "finalStatus", defaultWidth: 160 },
@@ -422,14 +422,14 @@ export function ApplicationsTab({
         {isAddLineOpen ? (
           <form
             className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault()
 
               if (!form.companyName.trim() || !form.jobPosition.trim()) {
                 return
               }
 
-              onAddApplication({
+              await onAddApplication({
                 ...form,
                 cvUsed: getSafeOptionValue(options.cvUsed, form.cvUsed),
                 emailUsed: getSafeOptionValue(options.emailUsed, form.emailUsed),
@@ -438,7 +438,6 @@ export function ApplicationsTab({
                   ? getSafeOptionValue(options.finalStatus, form.finalStatus)
                   : "",
               })
-
 
               setForm(buildDefaultForm(options))
             }}
@@ -504,7 +503,7 @@ export function ApplicationsTab({
           </label>
 
           <label className="space-y-1 text-sm">
-            <span className="text-muted-foreground">CV used</span>
+            <span className="text-muted-foreground">Resume used</span>
             <select
               value={getSafeOptionValue(options.cvUsed, form.cvUsed)}
               onChange={(event) =>

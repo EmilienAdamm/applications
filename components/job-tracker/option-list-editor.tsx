@@ -103,9 +103,9 @@ interface OptionListEditorProps {
   title: string
   description: string
   values: { id: string; value: string; color: string; sortOrder: number }[]
-  onAdd: (value: string, color: string) => void
-  onRename: (id: string, newValue: string, newColor: string) => void
-  onDelete: (id: string) => void
+  onAdd: (value: string, color: string) => Promise<void>
+  onRename: (id: string, newValue: string, newColor: string) => Promise<void>
+  onDelete: (id: string) => Promise<void>
 }
 
 export function OptionListEditor({
@@ -135,9 +135,17 @@ export function OptionListEditor({
     setEditingColor("zinc")
   }
 
-  function commitEdit(id: string) {
-    onRename(id, editingText, editingColor)
+  async function commitEdit(id: string) {
+    await onRename(id, editingText, editingColor)
     cancelEdit()
+  }
+
+  async function handleAddValue() {
+    if (!canAdd) return
+
+    await onAdd(newValue.trim(), newColor)
+    setNewValue("")
+    setNewColor("zinc")
   }
 
   return (
@@ -165,7 +173,7 @@ export function OptionListEditor({
                     value={editingText}
                     onChange={(event) => setEditingText(event.target.value)}
                     onKeyDown={(event) => {
-                      if (event.key === "Enter") commitEdit(option.id)
+                      if (event.key === "Enter") void commitEdit(option.id)
                       if (event.key === "Escape") cancelEdit()
                     }}
                     className="h-8 min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-2 text-sm outline-none ring-emerald-500/30 focus:ring-4 dark:border-zinc-700 dark:bg-zinc-950"
@@ -174,7 +182,7 @@ export function OptionListEditor({
                   <Button
                     size="sm"
                     className="h-8 cursor-pointer px-3"
-                    onClick={() => commitEdit(option.id)}
+                    onClick={() => void commitEdit(option.id)}
                   >
                     Save
                   </Button>
@@ -213,7 +221,7 @@ export function OptionListEditor({
                     variant="ghost"
                     size="icon-sm"
                     className="cursor-pointer text-zinc-500 hover:bg-red-100 hover:text-red-700 dark:text-zinc-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
-                    onClick={() => onDelete(option.id)}
+                    onClick={() => void onDelete(option.id)}
                     disabled={values.length <= 1}
                     aria-label={`Delete ${option.value}`}
                   >
@@ -233,9 +241,7 @@ export function OptionListEditor({
           onChange={(event) => setNewValue(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && canAdd) {
-              onAdd(newValue.trim(), newColor)
-              setNewValue("")
-              setNewColor("zinc")
+              void handleAddValue()
             }
           }}
           placeholder="Add a value"
@@ -246,12 +252,7 @@ export function OptionListEditor({
           size="lg"
           className="cursor-pointer"
           disabled={!canAdd}
-          onClick={() => {
-            if (!canAdd) return
-            onAdd(newValue.trim(), newColor)
-            setNewValue("")
-            setNewColor("zinc")
-          }}
+          onClick={() => void handleAddValue()}
         >
           <Plus className="size-4" />
           Add

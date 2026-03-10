@@ -667,7 +667,7 @@ export function AnalysisTab({ applications }: AnalysisTabProps) {
       <header className="rounded-2xl border border-white/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-zinc-900/80">
         <h2 className="text-xl font-semibold">Analytics</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Overview of companies, roles, CV usage and daily application trends.
+          Overview of companies, roles, resume usage and daily application trends.
         </p>
       </header>
 
@@ -737,9 +737,9 @@ export function AnalysisTab({ applications }: AnalysisTabProps) {
         </article>
 
         <article className="rounded-2xl border border-white/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-zinc-900/80">
-          <h3 className="text-base font-semibold">CV usage distribution</h3>
+          <h3 className="text-base font-semibold">Resume usage distribution</h3>
           <p className="text-xs text-muted-foreground">
-            Percentage split by CV used.
+            Percentage split by resume used.
           </p>
           {cvBreakdown.length === 0 ? (
             <p className="mt-4 text-sm text-muted-foreground">No data available.</p>
@@ -750,7 +750,7 @@ export function AnalysisTab({ applications }: AnalysisTabProps) {
                   viewBox={`0 0 ${donutSize} ${donutSize}`}
                   className="h-full w-full drop-shadow-sm"
                   role="img"
-                  aria-label="CV usage donut chart"
+                  aria-label="Resume usage donut chart"
                 >
                   {cvDonutSlices.map((slice) => (
                     <path
