@@ -44,6 +44,29 @@ export interface JobApplication {
   finalStatus: string
 }
 
+export type JobApplicationMetadataStatus =
+  | "queued"
+  | "processing"
+  | "success"
+  | "partial"
+  | "failed"
+
+export interface JobApplicationMetadata {
+  applicationId: string
+  sourceUrl: string
+  sourceTitle: string
+  salaryText: string
+  locations: string[]
+  skills: string[]
+  extractionStatus: JobApplicationMetadataStatus
+  extractionError: string
+  fetchedAt: string
+}
+
+export interface TrackerSettings {
+  deeperSearchEnabled: boolean
+}
+
 export interface NewApplicationForm {
   companyName: string
   jobPosition: string

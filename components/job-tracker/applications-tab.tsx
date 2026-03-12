@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
+  Eye,
   ExternalLink,
   Search,
   Trash2,
@@ -20,6 +21,7 @@ import { buildDefaultForm } from "@/lib/job-tracker/default-data"
 import type {
   ApplicationFieldKey,
   JobApplication,
+  JobApplicationMetadata,
   NewApplicationForm,
   TrackerOptions,
   TrackerStats,
@@ -34,10 +36,14 @@ type SortDirection = "asc" | "desc" | null
 
 interface ApplicationsTabProps {
   applications: JobApplication[]
+  metadataByApplicationId: Record<string, JobApplicationMetadata>
   options: TrackerOptions
   stats: TrackerStats
   onAddApplication: (form: NewApplicationForm) => Promise<void>
   onDeleteApplication: (id: string) => void
+  onRefreshApplicationMetadata: (
+    id: string
+  ) => Promise<JobApplicationMetadata | null>
   onUpdateApplicationField: (
     id: string,
     field: ApplicationFieldKey,
@@ -69,6 +75,8 @@ const TABLE_COLUMNS: TableColumn[] = [
 
 const CENTER_ALIGNED_COLUMNS = new Set<ApplicationFieldKey>([
   "companyName",
+  "dateOfApplication",
+  "jobOfferLink",
   "cvUsed",
   "emailUsed",
   "status",
@@ -103,10 +111,12 @@ function sortIcon(direction: SortDirection) {
 
 export function ApplicationsTab({
   applications,
+  metadataByApplicationId,
   options,
   stats,
   onAddApplication,
   onDeleteApplication,
+  onRefreshApplicationMetadata,
   onUpdateApplicationField,
   onImport,
   onExport,
@@ -150,10 +160,24 @@ export function ApplicationsTab({
     field: null,
     direction: null,
   })
+  const [activeMetadataApplicationId, setActiveMetadataApplicationId] = useState<
+    string | null
+  >(null)
+  const [refreshingMetadataApplicationId, setRefreshingMetadataApplicationId] =
+    useState<string | null>(null)
   const visibleTableColumns = useMemo(
     () => TABLE_COLUMNS.filter((column) => visibleColumns[column.key]),
     [visibleColumns]
   )
+  const activeMetadata =
+    activeMetadataApplicationId
+      ? metadataByApplicationId[activeMetadataApplicationId] ?? null
+      : null
+  const activeApplication =
+    activeMetadataApplicationId
+      ? applications.find((application) => application.id === activeMetadataApplicationId) ??
+        null
+      : null
 
   const orderedApplications = useMemo(() => {
     const sortField = sortState.field
@@ -279,13 +303,18 @@ export function ApplicationsTab({
           target="_blank"
           rel="noreferrer"
           onClick={(event) => event.stopPropagation()}
-          className="inline-flex items-center gap-1 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+          className={cn(
+            "inline-flex items-center gap-1 text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300",
+            centered ? "mx-auto justify-center" : ""
+          )}
         >
           Open
           <ExternalLink className="size-3.5" />
         </a>
       ) : (
-        <span className="text-muted-foreground">-</span>
+        <span className={cn("block text-muted-foreground", centered ? "text-center" : "")}>
+          -
+        </span>
       )
     }
 
@@ -378,6 +407,16 @@ export function ApplicationsTab({
         )}
       />
     )
+  }
+
+  async function openMetadataModal(application: JobApplication) {
+    setRefreshingMetadataApplicationId(application.id)
+    try {
+      await onRefreshApplicationMetadata(application.id)
+    } finally {
+      setRefreshingMetadataApplicationId(null)
+      setActiveMetadataApplicationId(application.id)
+    }
   }
 
   return (
@@ -661,7 +700,7 @@ export function ApplicationsTab({
                 {visibleTableColumns.map((column) => (
                   <col key={column.key} style={{ width: `${columnWidths[column.key]}px` }} />
                 ))}
-                <col style={{ width: "88px" }} />
+                <col style={{ width: "120px" }} />
               </colgroup>
               <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-muted-foreground dark:bg-zinc-900/60">
                 <tr>
@@ -750,15 +789,29 @@ export function ApplicationsTab({
                         )
                       })}
                       <td className="px-5 py-3 text-center">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-zinc-500 hover:bg-red-100 hover:text-red-700 dark:text-zinc-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
-                          onClick={() => onDeleteApplication(application.id)}
-                          aria-label={`Delete ${application.companyName}`}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
+                        <div className="flex items-center justify-center gap-1">
+                          {canViewMetadata(metadataByApplicationId[application.id]) ? (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-zinc-500 hover:bg-emerald-100 hover:text-emerald-700 dark:text-zinc-400 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
+                              onClick={() => void openMetadataModal(application)}
+                              aria-label={`View extra info for ${application.companyName}`}
+                              disabled={refreshingMetadataApplicationId === application.id}
+                            >
+                              <Eye className="size-4" />
+                            </Button>
+                          ) : null}
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-zinc-500 hover:bg-red-100 hover:text-red-700 dark:text-zinc-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                            onClick={() => onDeleteApplication(application.id)}
+                            aria-label={`Delete ${application.companyName}`}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -768,6 +821,118 @@ export function ApplicationsTab({
           </div>
         </div>
       </div>
+
+      {activeMetadata && activeApplication ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[2px]"
+          onClick={() => setActiveMetadataApplicationId(null)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-2xl border border-white/70 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-zinc-950"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">
+                  Extra info
+                </p>
+                <h3 className="mt-2 text-xl font-semibold">
+                  {activeApplication.jobPosition}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {activeApplication.companyName}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setActiveMetadataApplicationId(null)}
+              >
+                Close
+              </Button>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {isBlockedByJobSite(activeMetadata) ? (
+                <MetadataCard
+                  label="Deeper Search"
+                  value="The request was blocked by the job posting site (HTTP 403), so extra information could not be fetched automatically."
+                  className="md:col-span-2"
+                />
+              ) : (
+                <>
+                  <MetadataCard
+                    label="Possible salary"
+                    value={activeMetadata.salaryText || "Not detected on the page"}
+                  />
+                  <MetadataCard
+                    label="Possible locations"
+                    value={
+                      activeMetadata.locations.length > 0
+                        ? activeMetadata.locations.join(", ")
+                        : "Not detected on the page"
+                    }
+                  />
+                  <MetadataCard
+                    label="Technologies"
+                    value={
+                      activeMetadata.skills.length > 0
+                        ? activeMetadata.skills.join(", ")
+                        : "Not detected on the page"
+                    }
+                    className="md:col-span-2"
+                  />
+                </>
+              )}
+            </div>
+
+            <div className="mt-5 border-t border-zinc-200 pt-4 text-xs text-muted-foreground dark:border-zinc-800">
+              <span>
+                Extraction status: {activeMetadata.extractionStatus}
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
+  )
+}
+
+function canViewMetadata(metadata: JobApplicationMetadata | undefined) {
+  if (!metadata) return false
+  if (isBlockedByJobSite(metadata)) return true
+  if (metadata.extractionStatus === "failed") return false
+
+  return Boolean(
+    metadata.salaryText || metadata.locations.length > 0 || metadata.skills.length > 0
+  )
+}
+
+function isBlockedByJobSite(metadata: JobApplicationMetadata) {
+  return /status 403|http 403|\b403\b/i.test(metadata.extractionError)
+}
+
+interface MetadataCardProps {
+  label: string
+  value: string
+  className?: string
+}
+
+function MetadataCard({ label, value, className }: MetadataCardProps) {
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/70",
+        className
+      )}
+    >
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-2 text-sm leading-6 text-zinc-800 dark:text-zinc-100">
+        {value}
+      </p>
+    </div>
   )
 }

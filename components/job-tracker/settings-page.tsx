@@ -1,13 +1,19 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useReducer } from "react"
+import { useReducer, useState } from "react"
 
-import { addOption, deleteOption, renameOption } from "@/app/app/actions"
+import {
+  addOption,
+  deleteOption,
+  renameOption,
+  updateDeeperSearchPreference,
+} from "@/app/app/actions"
 import { useToast } from "@/components/ui/toast-provider"
 import { trackerReducer } from "@/lib/job-tracker/reducer"
 import type {
   OptionCategory,
+  TrackerSettings,
   TrackerOptions,
 } from "@/lib/job-tracker/types"
 
@@ -31,6 +37,7 @@ const SettingsTab = dynamic(
 
 interface SettingsPageProps {
   initialOptions: TrackerOptions
+  initialSettings: TrackerSettings
 }
 
 function optionCategoryLabel(category: OptionCategory) {
@@ -42,12 +49,14 @@ function optionCategoryLabel(category: OptionCategory) {
 
 export function SettingsPage({
   initialOptions,
+  initialSettings,
 }: SettingsPageProps) {
   const { success } = useToast()
   const [state, dispatch] = useReducer(trackerReducer, {
     applications: [],
     options: initialOptions,
   })
+  const [settings, setSettings] = useState(initialSettings)
 
   async function handleAddOption(
     category: OptionCategory,
@@ -117,12 +126,31 @@ export function SettingsPage({
     success(`${optionCategoryLabel(category)} option deleted`, option.value)
   }
 
+  async function handleSetDeeperSearch(enabled: boolean) {
+    const result = await updateDeeperSearchPreference(enabled)
+    setSettings(result.settings)
+
+    if (enabled) {
+      success(
+        "Deeper Search enabled",
+        result.queuedApplications > 0
+          ? `${result.queuedApplications} existing applications queued for analysis`
+          : "New applications will trigger Deeper Search automatically"
+      )
+      return
+    }
+
+    success("Deeper Search disabled")
+  }
+
   return (
     <SettingsTab
       options={state.options}
+      settings={settings}
       onAddOption={handleAddOption}
       onRenameOption={handleRenameOption}
       onDeleteOption={handleDeleteOption}
+      onSetDeeperSearch={handleSetDeeperSearch}
     />
   )
 }

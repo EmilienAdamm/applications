@@ -1,12 +1,16 @@
 "use client"
 
 import * as React from "react"
+import { usePathname } from "next/navigation"
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
 
 function ThemeProvider({
   children,
+  enableHotkey = true,
   ...props
-}: React.ComponentProps<typeof NextThemesProvider>) {
+}: React.ComponentProps<typeof NextThemesProvider> & {
+  enableHotkey?: boolean
+}) {
   return (
     <NextThemesProvider
       attribute="class"
@@ -15,7 +19,7 @@ function ThemeProvider({
       disableTransitionOnChange
       {...props}
     >
-      <ThemeHotkey />
+      <ThemeHotkey enabled={enableHotkey} />
       {children}
     </NextThemesProvider>
   )
@@ -34,10 +38,15 @@ function isTypingTarget(target: EventTarget | null) {
   )
 }
 
-function ThemeHotkey() {
+function ThemeHotkey({ enabled }: { enabled: boolean }) {
+  const pathname = usePathname()
   const { resolvedTheme, setTheme } = useTheme()
 
   React.useEffect(() => {
+    if (!enabled || pathname === "/") {
+      return
+    }
+
     function onKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented || event.repeat) {
         return
@@ -63,7 +72,7 @@ function ThemeHotkey() {
     return () => {
       window.removeEventListener("keydown", onKeyDown)
     }
-  }, [resolvedTheme, setTheme])
+  }, [enabled, pathname, resolvedTheme, setTheme])
 
   return null
 }

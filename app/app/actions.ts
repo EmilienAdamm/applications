@@ -1,12 +1,28 @@
 "use server"
 
+import { after } from "next/server"
+
 import { db } from "@/lib/db"
 import { jobApplications, userOptions } from "@/lib/db/schema"
 import { auth } from "@/lib/auth"
+import {
+  deleteApplicationMetadata,
+  fetchApplicationMetadataForUserApplication,
+  queueApplicationMetadataSearch,
+  runApplicationMetadataSearch,
+  syncApplicationMetadata,
+} from "@/lib/job-tracker/job-application-metadata-store"
+import { normalizeJobPostUrl } from "@/lib/job-tracker/job-post-metadata"
+import {
+  fetchTrackerSettingsByUser,
+  updateDeeperSearchSetting,
+} from "@/lib/job-tracker/tracker-settings-store"
 import type {
   ApplicationFieldKey,
+  JobApplicationMetadata,
   NewApplicationForm,
   OptionCategory,
+  TrackerSettings,
   TrackerOptions,
   UserOption,
 } from "@/lib/job-tracker/types"
@@ -43,23 +59,53 @@ export async function fetchApplications() {
 
 export async function addApplication(
   form: NewApplicationForm
-): Promise<string> {
+): Promise<{
+  id: string
+  metadata: JobApplicationMetadata | null
+  deeperSearchQueued: boolean
+}> {
   const userId = await getAuthenticatedUserId()
+  const settings = await fetchTrackerSettingsByUser(userId)
+  const normalizedForm = {
+    companyName: form.companyName.trim(),
+    jobPosition: form.jobPosition.trim(),
+    dateOfApplication: form.dateOfApplication,
+    jobOfferLink: form.jobOfferLink.trim(),
+    cvUsed: form.cvUsed,
+    emailUsed: form.emailUsed,
+    status: form.status,
+    finalStatus: form.finalStatus,
+  }
+
   const [row] = await db
     .insert(jobApplications)
     .values({
       userId,
-      companyName: form.companyName.trim(),
-      jobPosition: form.jobPosition.trim(),
-      dateOfApplication: form.dateOfApplication,
-      jobOfferLink: form.jobOfferLink.trim(),
-      cvUsed: form.cvUsed,
-      emailUsed: form.emailUsed,
-      status: form.status,
-      finalStatus: form.finalStatus,
+      ...normalizedForm,
     })
     .returning({ id: jobApplications.id })
-  return row.id
+
+  let metadata: JobApplicationMetadata | null = null
+  const shouldQueueDeeperSearch =
+    settings.deeperSearchEnabled &&
+    Boolean(normalizeJobPostUrl(normalizedForm.jobOfferLink))
+
+  if (shouldQueueDeeperSearch) {
+    try {
+      metadata = await queueApplicationMetadataSearch(
+        userId,
+        row.id,
+        normalizedForm.jobOfferLink
+      )
+      after(async () => {
+        await runApplicationMetadataSearch(userId, row.id, normalizedForm.jobOfferLink)
+      })
+    } catch (error) {
+      console.error("Failed to queue application metadata", error)
+    }
+  }
+
+  return { id: row.id, metadata, deeperSearchQueued: shouldQueueDeeperSearch }
 }
 
 export async function deleteApplication(id: string): Promise<void> {
@@ -69,20 +115,148 @@ export async function deleteApplication(id: string): Promise<void> {
     .where(
       and(eq(jobApplications.id, id), eq(jobApplications.userId, userId))
     )
+
+  try {
+    await deleteApplicationMetadata(userId, id)
+  } catch (error) {
+    console.error("Failed to delete application metadata", error)
+  }
 }
 
 export async function updateApplicationField(
   id: string,
   field: ApplicationFieldKey,
   value: string
-): Promise<void> {
+): Promise<JobApplicationMetadata | null> {
   const userId = await getAuthenticatedUserId()
+  const settings = await fetchTrackerSettingsByUser(userId)
   await db
     .update(jobApplications)
     .set({ [field]: value.trim(), updatedAt: new Date() })
     .where(
       and(eq(jobApplications.id, id), eq(jobApplications.userId, userId))
     )
+
+  if (field === "jobOfferLink") {
+    try {
+      if (settings.deeperSearchEnabled) {
+        if (!normalizeJobPostUrl(value)) {
+          await deleteApplicationMetadata(userId, id)
+          return null
+        }
+
+        const metadata = await queueApplicationMetadataSearch(userId, id, value)
+        after(async () => {
+          await runApplicationMetadataSearch(userId, id, value)
+        })
+        return metadata
+      }
+
+      await deleteApplicationMetadata(userId, id)
+      return null
+    } catch (error) {
+      console.error("Failed to refresh application metadata", error)
+    }
+  }
+
+  return null
+}
+
+export async function refreshApplicationMetadata(
+  id: string
+): Promise<JobApplicationMetadata | null> {
+  const userId = await getAuthenticatedUserId()
+  const [application] = await db
+    .select({
+      jobOfferLink: jobApplications.jobOfferLink,
+    })
+    .from(jobApplications)
+    .where(and(eq(jobApplications.id, id), eq(jobApplications.userId, userId)))
+    .limit(1)
+
+  if (!application) return null
+
+  try {
+    return await syncApplicationMetadata(userId, id, application.jobOfferLink)
+  } catch (error) {
+    console.error("Failed to refresh application metadata on demand", error)
+    return null
+  }
+}
+
+export async function fetchApplicationMetadata(
+  id: string
+): Promise<JobApplicationMetadata | null> {
+  const userId = await getAuthenticatedUserId()
+  return fetchApplicationMetadataForUserApplication(userId, id)
+}
+
+export async function updateDeeperSearchPreference(enabled: boolean): Promise<{
+  settings: TrackerSettings
+  queuedApplications: number
+}> {
+  const userId = await getAuthenticatedUserId()
+  const settings = await updateDeeperSearchSetting(userId, enabled)
+
+  if (!enabled) {
+    return { settings, queuedApplications: 0 }
+  }
+
+  const applications = await db
+    .select({
+      id: jobApplications.id,
+      jobOfferLink: jobApplications.jobOfferLink,
+    })
+    .from(jobApplications)
+    .where(eq(jobApplications.userId, userId))
+
+  const queuedApplications = (
+    await Promise.all(
+      applications.map(async (application) => {
+        const existingMetadata = await fetchApplicationMetadataForUserApplication(
+          userId,
+          application.id
+        )
+        if (existingMetadata) return null
+
+        return queueApplicationMetadataSearch(
+          userId,
+          application.id,
+          application.jobOfferLink
+        )
+      })
+    )
+  ).filter(Boolean)
+
+  if (queuedApplications.length > 0) {
+    after(async () => {
+      await Promise.allSettled(
+        applications.map(async (application) => {
+          const existingMetadata = await fetchApplicationMetadataForUserApplication(
+            userId,
+            application.id
+          )
+          if (
+            existingMetadata &&
+            existingMetadata.extractionStatus !== "queued"
+          ) {
+            return
+          }
+
+          await runApplicationMetadataSearch(
+            userId,
+            application.id,
+            application.jobOfferLink
+          )
+        })
+      )
+    })
+  }
+
+  return {
+    settings,
+    queuedApplications: queuedApplications.length,
+  }
 }
 
 // ─── Options ─────────────────────────────────────────────────────────────────
@@ -280,6 +454,7 @@ export async function importApplications(
   rows: ParsedImportRow[]
 ): Promise<ImportResult> {
   const userId = await getAuthenticatedUserId()
+  const settings = await fetchTrackerSettingsByUser(userId)
 
   // ── 1. Collect all unique option values from the import ──────────────────
   const optionCategories: OptionCategory[] = ["cvUsed", "emailUsed", "status", "finalStatus"]
@@ -394,6 +569,30 @@ export async function importApplications(
         emailUsed: row.emailUsed,
         status: row.status,
         finalStatus: row.finalStatus,
+      })
+    }
+
+    if (settings.deeperSearchEnabled) {
+      await Promise.all(
+        insertedApplications.map((application) =>
+          queueApplicationMetadataSearch(
+            userId,
+            application.id,
+            application.jobOfferLink
+          )
+        )
+      )
+
+      after(async () => {
+        await Promise.allSettled(
+          insertedApplications.map((application) =>
+            runApplicationMetadataSearch(
+              userId,
+              application.id,
+              application.jobOfferLink
+            )
+          )
+        )
       })
     }
   }

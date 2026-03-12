@@ -7,6 +7,8 @@ import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { jobApplications, userOptions } from "@/lib/db/schema"
+import { fetchApplicationMetadataByUser } from "@/lib/job-tracker/job-application-metadata-store"
+import { fetchTrackerSettingsByUser } from "@/lib/job-tracker/tracker-settings-store"
 import type {
   JobApplication,
   OptionCategory,
@@ -108,12 +110,13 @@ export async function getApplicationsPageData() {
   const user = await requireTrackerUser()
   await ensureDefaultOptions(user.id, user.email ?? "")
 
-  const [applications, options] = await Promise.all([
+  const [applications, options, metadataByApplicationId] = await Promise.all([
     fetchApplicationsByUser(user.id),
     fetchOptionsByUser(user.id),
+    fetchApplicationMetadataByUser(user.id),
   ])
 
-  return { applications, options }
+  return { applications, options, metadataByApplicationId }
 }
 
 export async function getAnalysisPageData() {
@@ -125,5 +128,10 @@ export async function getSettingsPageData() {
   const user = await requireTrackerUser()
   await ensureDefaultOptions(user.id, user.email ?? "")
 
-  return { options: await fetchOptionsByUser(user.id) }
+  const [options, settings] = await Promise.all([
+    fetchOptionsByUser(user.id),
+    fetchTrackerSettingsByUser(user.id),
+  ])
+
+  return { options, settings }
 }

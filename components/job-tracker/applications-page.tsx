@@ -1,12 +1,14 @@
 "use client"
 
-import { useMemo, useReducer } from "react"
+import { useMemo, useReducer, useState } from "react"
 
 import {
   addApplication,
+  fetchApplicationMetadata,
   deleteApplication,
   importApplications,
   type ParsedImportRow,
+  refreshApplicationMetadata,
   updateApplicationField,
 } from "@/app/app/actions"
 import { ApplicationsTab } from "@/components/job-tracker/applications-tab"
@@ -15,6 +17,7 @@ import { trackerReducer } from "@/lib/job-tracker/reducer"
 import type {
   ApplicationFieldKey,
   JobApplication,
+  JobApplicationMetadata,
   NewApplicationForm,
   TrackerOptions,
 } from "@/lib/job-tracker/types"
@@ -25,18 +28,23 @@ function containsInterview(status: string) {
 
 interface ApplicationsPageProps {
   initialApplications: JobApplication[]
+  initialMetadataByApplicationId: Record<string, JobApplicationMetadata>
   initialOptions: TrackerOptions
 }
 
 export function ApplicationsPage({
   initialApplications,
+  initialMetadataByApplicationId,
   initialOptions,
 }: ApplicationsPageProps) {
-  const { success } = useToast()
+  const { loading, success, update } = useToast()
   const [state, dispatch] = useReducer(trackerReducer, {
     applications: initialApplications,
     options: initialOptions,
   })
+  const [metadataByApplicationId, setMetadataByApplicationId] = useState(
+    initialMetadataByApplicationId
+  )
 
   const stats = useMemo(() => {
     const total = state.applications.length
@@ -50,16 +58,33 @@ export function ApplicationsPage({
   }, [state.applications])
 
   async function handleAddApplication(form: NewApplicationForm) {
-    const id = await addApplication(form)
-    dispatch({ type: "add_application", payload: { ...form, id } })
+    const result = await addApplication(form)
+    dispatch({ type: "add_application", payload: { ...form, id: result.id } })
+    setMetadataByApplicationId((previous) => {
+      if (!result.metadata) return previous
+      return { ...previous, [result.id]: result.metadata }
+    })
     success(
       "Application added",
       `${form.jobPosition.trim()} at ${form.companyName.trim()}`
     )
+
+    if (result.deeperSearchQueued) {
+      const toastId = loading(
+        "Deeper Search running",
+        "Fetching the job post and analyzing extra info"
+      )
+      void watchDeeperSearch(result.id, toastId)
+    }
   }
 
   async function handleDeleteApplication(id: string) {
     dispatch({ type: "remove_application", payload: { id } })
+    setMetadataByApplicationId((previous) => {
+      const next = { ...previous }
+      delete next[id]
+      return next
+    })
     await deleteApplication(id)
   }
 
@@ -69,7 +94,82 @@ export function ApplicationsPage({
     value: string
   ) {
     dispatch({ type: "update_application_field", payload: { id, field, value } })
-    await updateApplicationField(id, field, value)
+    const metadata = await updateApplicationField(id, field, value)
+
+    if (field === "jobOfferLink") {
+      setMetadataByApplicationId((previous) => {
+        const next = { ...previous }
+        if (metadata) {
+          next[id] = metadata
+        } else {
+          delete next[id]
+        }
+        return next
+      })
+    }
+  }
+
+  async function handleRefreshApplicationMetadata(id: string) {
+    const metadata = await refreshApplicationMetadata(id)
+    setMetadataByApplicationId((previous) => {
+      const next = { ...previous }
+      if (metadata) {
+        next[id] = metadata
+      } else {
+        delete next[id]
+      }
+      return next
+    })
+    return metadata
+  }
+
+  async function watchDeeperSearch(applicationId: string, toastId: string) {
+    for (let attempt = 0; attempt < 24; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 1500))
+      const metadata = await fetchApplicationMetadata(applicationId)
+
+      if (!metadata) continue
+
+      setMetadataByApplicationId((previous) => ({
+        ...previous,
+        [applicationId]: metadata,
+      }))
+
+      if (
+        metadata.extractionStatus === "queued" ||
+        metadata.extractionStatus === "processing"
+      ) {
+        continue
+      }
+
+      if (
+        metadata.extractionStatus === "success" ||
+        metadata.extractionStatus === "partial"
+      ) {
+        update(toastId, {
+          tone: "success",
+          title: "Deeper Search finished",
+          description:
+            metadata.locations.length > 0 || metadata.skills.length > 0
+              ? "Extra info is ready in the view modal"
+              : "The job post was fetched successfully",
+        })
+        return
+      }
+
+      update(toastId, {
+        tone: "error",
+        title: "Deeper Search failed",
+        description: metadata.extractionError || "The job post could not be analyzed",
+      })
+      return
+    }
+
+    update(toastId, {
+      tone: "error",
+      title: "Deeper Search timed out",
+      description: "The analysis took too long to finish",
+    })
   }
 
   async function handleImport(file: File) {
@@ -176,10 +276,12 @@ export function ApplicationsPage({
   return (
     <ApplicationsTab
       applications={state.applications}
+      metadataByApplicationId={metadataByApplicationId}
       options={state.options}
       stats={stats}
       onAddApplication={handleAddApplication}
       onDeleteApplication={handleDeleteApplication}
+      onRefreshApplicationMetadata={handleRefreshApplicationMetadata}
       onUpdateApplicationField={handleUpdateApplicationField}
       onImport={handleImport}
       onExport={handleExport}

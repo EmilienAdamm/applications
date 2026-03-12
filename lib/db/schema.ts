@@ -1,7 +1,9 @@
 import {
+  boolean,
   date,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -45,7 +47,40 @@ export const userOptions = pgTable(
   ]
 )
 
+export const jobApplicationMetadata = pgTable(
+  "job_application_metadata",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    applicationId: uuid("application_id").notNull(),
+    userId: text("user_id").notNull(),
+    sourceUrl: text("source_url").notNull().default(""),
+    sourceTitle: text("source_title").notNull().default(""),
+    salaryText: text("salary_text").notNull().default(""),
+    locations: jsonb("locations").$type<string[]>().notNull().default([]),
+    skills: jsonb("skills").$type<string[]>().notNull().default([]),
+    extractionStatus: text("extraction_status").notNull().default("failed"),
+    extractionError: text("extraction_error").notNull().default(""),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_job_application_metadata_user_id").on(t.userId),
+    unique("unique_job_application_metadata_application_id").on(t.applicationId),
+  ]
+)
+
+export const trackerUserSettings = pgTable("tracker_user_settings", {
+  userId: text("user_id").primaryKey(),
+  deeperSearchEnabled: boolean("dipper_search_enabled").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
 export type JobApplicationRow = typeof jobApplications.$inferSelect
 export type NewJobApplication = typeof jobApplications.$inferInsert
 export type UserOptionRow = typeof userOptions.$inferSelect
 export type NewUserOption = typeof userOptions.$inferInsert
+export type JobApplicationMetadataRow = typeof jobApplicationMetadata.$inferSelect
+export type NewJobApplicationMetadata = typeof jobApplicationMetadata.$inferInsert
+export type TrackerUserSettingsRow = typeof trackerUserSettings.$inferSelect

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
 
-export default function ApplicationsLegacyRoutePage() {
+export default function NotFound() {
   redirect("/app")
 }

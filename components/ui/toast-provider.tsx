@@ -1,6 +1,6 @@
 "use client"
 
-import { CheckCircle2, X } from "lucide-react"
+import { AlertCircle, CheckCircle2, LoaderCircle, X } from "lucide-react"
 import {
   createContext,
   useContext,
@@ -12,10 +12,22 @@ interface Toast {
   id: string
   title: string
   description?: string
+  tone: "success" | "loading" | "error"
 }
 
 interface ToastContextValue {
   success: (title: string, description?: string) => void
+  error: (title: string, description?: string) => void
+  loading: (title: string, description?: string) => string
+  update: (
+    id: string,
+    next: {
+      title: string
+      description?: string
+      tone: "success" | "loading" | "error"
+    }
+  ) => void
+  dismiss: (id: string) => void
 }
 
 const TOAST_DURATION_MS = 3200
@@ -37,18 +49,65 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((current) => current.filter((toast) => toast.id !== id))
   }
 
-  function success(title: string, description?: string) {
-    const id = createToastId()
-
-    setToasts((current) => [...current, { id, title, description }])
-
+  function scheduleDismiss(id: string) {
     window.setTimeout(() => {
       setToasts((current) => current.filter((toast) => toast.id !== id))
     }, TOAST_DURATION_MS)
   }
 
+  function pushToast(tone: Toast["tone"], title: string, description?: string) {
+    const id = createToastId()
+
+    setToasts((current) => [...current, { id, title, description, tone }])
+
+    if (tone !== "loading") {
+      scheduleDismiss(id)
+    }
+
+    return id
+  }
+
+  function success(title: string, description?: string) {
+    pushToast("success", title, description)
+  }
+
+  function error(title: string, description?: string) {
+    pushToast("error", title, description)
+  }
+
+  function loading(title: string, description?: string) {
+    return pushToast("loading", title, description)
+  }
+
+  function update(
+    id: string,
+    next: {
+      title: string
+      description?: string
+      tone: "success" | "loading" | "error"
+    }
+  ) {
+    setToasts((current) =>
+      current.map((toast) =>
+        toast.id === id ? { ...toast, ...next } : toast
+      )
+    )
+
+    if (next.tone !== "loading") {
+      scheduleDismiss(id)
+    }
+  }
+
   return (
-    <ToastContext.Provider value={{ success }}>
+    <ToastContext.Provider
+      value={{
+        success,
+        error,
+        loading,
+        update,
+        dismiss: dismissToast,
+      }}
+    >
       {children}
 
       <div
@@ -59,11 +118,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={toast.id}
             role="status"
-            className="pointer-events-auto rounded-2xl border border-emerald-200 bg-white/95 p-4 shadow-lg shadow-emerald-950/10 backdrop-blur animate-in slide-in-from-right-8 fade-in duration-300 dark:border-emerald-900/60 dark:bg-zinc-950/95"
+            className="pointer-events-auto rounded-2xl border bg-white/95 p-4 shadow-lg backdrop-blur animate-in slide-in-from-right-8 fade-in duration-300 dark:bg-zinc-950/95"
           >
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 rounded-full bg-emerald-100 p-1 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
-                <CheckCircle2 className="size-4" />
+              <div
+                className={
+                  toast.tone === "success"
+                    ? "mt-0.5 rounded-full bg-emerald-100 p-1 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                    : toast.tone === "error"
+                      ? "mt-0.5 rounded-full bg-red-100 p-1 text-red-700 dark:bg-red-950/60 dark:text-red-300"
+                      : "mt-0.5 rounded-full bg-sky-100 p-1 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300"
+                }
+              >
+                {toast.tone === "success" ? (
+                  <CheckCircle2 className="size-4" />
+                ) : toast.tone === "error" ? (
+                  <AlertCircle className="size-4" />
+                ) : (
+                  <LoaderCircle className="size-4 animate-spin" />
+                )}
               </div>
 
               <div className="min-w-0 flex-1">

@@ -9,6 +9,6 @@ export const metadata: Metadata = {
 }
 
 export default async function SettingsRoutePage() {
-  const { options } = await getSettingsPageData()
-  return <SettingsPage initialOptions={options} />
+  const { options, settings } = await getSettingsPageData()
+  return <SettingsPage initialOptions={options} initialSettings={settings} />
 }
