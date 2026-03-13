@@ -71,16 +71,16 @@ export function AppShell({ children }: AppShellProps) {
   }, [])
 
   return (
-    <main className="min-h-svh bg-[radial-gradient(circle_at_top_left,_#d6f9e8,_transparent_40%),radial-gradient(circle_at_top_right,_#dff4ff,_transparent_30%),linear-gradient(#f7faf8,#f2f5f3)] px-3 py-3 pb-24 dark:bg-[radial-gradient(circle_at_top_left,_#083223,_transparent_45%),radial-gradient(circle_at_top_right,_#102942,_transparent_35%),linear-gradient(#0d1117,#12161d)] md:py-4 md:pr-4 md:pl-0 md:pb-4">
-      <div className="flex w-full items-stretch gap-4">
+    <main className="min-h-svh bg-[radial-gradient(circle_at_top_left,_#d6f9e8,_transparent_40%),radial-gradient(circle_at_top_right,_#dff4ff,_transparent_30%),linear-gradient(#f7faf8,#f2f5f3)] px-3 py-3 pb-24 dark:bg-[radial-gradient(circle_at_top_left,_#083223,_transparent_45%),radial-gradient(circle_at_top_right,_#102942,_transparent_35%),linear-gradient(#0d1117,#12161d)] md:h-svh md:overflow-hidden md:py-4 md:pr-4 md:pl-0 md:pb-4">
+      <div className="flex w-full items-stretch gap-4 md:h-full">
         <SidebarNav
           activeTab={activeTab}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
         />
 
-        <section className="min-h-[calc(100svh-7rem)] min-w-0 flex-1 rounded-3xl border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur dark:border-white/10 dark:bg-zinc-900/60 md:min-h-[calc(100svh-1rem)] md:p-6">
-          <header className="mb-5">
+        <section className="min-h-[calc(100svh-7rem)] min-w-0 flex-1 rounded-3xl border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur dark:border-white/10 dark:bg-zinc-900/60 md:flex md:h-full md:min-h-0 md:flex-col md:overflow-hidden md:p-6">
+          <header className="mb-5 shrink-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
               Job Applications Dashboard
             </p>
@@ -89,7 +89,9 @@ export function AppShell({ children }: AppShellProps) {
             </h1>
           </header>
 
-          {children}
+          <div className="md:min-h-0 md:flex-1 md:overflow-y-auto">
+            {children}
+          </div>
         </section>
       </div>
     </main>

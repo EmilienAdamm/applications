@@ -1,6 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import { useRouter } from "next/navigation"
 import { useReducer, useState } from "react"
 
 import {
@@ -10,6 +11,7 @@ import {
   updateDeeperSearchPreference,
 } from "@/app/app/actions"
 import { useToast } from "@/components/ui/toast-provider"
+import { authClient } from "@/lib/auth-client"
 import { trackerReducer } from "@/lib/job-tracker/reducer"
 import type {
   OptionCategory,
@@ -51,12 +53,14 @@ export function SettingsPage({
   initialOptions,
   initialSettings,
 }: SettingsPageProps) {
-  const { success } = useToast()
+  const router = useRouter()
+  const { error, success } = useToast()
   const [state, dispatch] = useReducer(trackerReducer, {
     applications: [],
     options: initialOptions,
   })
   const [settings, setSettings] = useState(initialSettings)
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
   async function handleAddOption(
     category: OptionCategory,
@@ -143,6 +147,21 @@ export function SettingsPage({
     success("Deeper Search disabled")
   }
 
+  async function handleSignOut() {
+    if (isSigningOut) return
+
+    setIsSigningOut(true)
+
+    try {
+      await authClient.signOut()
+      router.replace("/login")
+      router.refresh()
+    } catch {
+      setIsSigningOut(false)
+      error("Sign out failed", "The session could not be closed. Please try again.")
+    }
+  }
+
   return (
     <SettingsTab
       options={state.options}
@@ -151,6 +170,8 @@ export function SettingsPage({
       onRenameOption={handleRenameOption}
       onDeleteOption={handleDeleteOption}
       onSetDeeperSearch={handleSetDeeperSearch}
+      onSignOut={handleSignOut}
+      isSigningOut={isSigningOut}
     />
   )
 }

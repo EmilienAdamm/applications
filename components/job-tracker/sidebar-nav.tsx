@@ -82,7 +82,7 @@ export function SidebarNav({
 
       <aside
         className={cn(
-          "hidden min-h-[calc(100svh-1rem)] self-stretch flex-col justify-between rounded-r-3xl rounded-l-none border border-white/70 bg-white/90 p-3 backdrop-blur transition-[width] duration-300 dark:border-white/10 dark:bg-zinc-900/70 md:flex",
+          "hidden h-full min-h-0 self-stretch flex-col justify-between rounded-r-3xl rounded-l-none border border-white/70 bg-white/90 p-3 backdrop-blur transition-[width] duration-300 dark:border-white/10 dark:bg-zinc-900/70 md:flex",
           collapsed ? "w-[92px]" : "w-[268px]"
         )}
       >

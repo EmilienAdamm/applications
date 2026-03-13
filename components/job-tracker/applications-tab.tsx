@@ -420,7 +420,7 @@ export function ApplicationsTab({
   }
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-4 md:flex md:min-h-full md:flex-col md:overflow-hidden">
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
           label="Total applications"
@@ -609,8 +609,8 @@ export function ApplicationsTab({
         ) : null}
       </div>
 
-      <div className="relative rounded-2xl border border-white/70 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-900/80">
-        <div className="relative z-10 flex items-center justify-between border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
+      <div className="relative rounded-2xl border border-white/70 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-900/80 md:flex md:min-h-0 md:flex-1 md:flex-col">
+        <div className="relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold">Applications list</h3>
             <label className="relative">
@@ -693,8 +693,8 @@ export function ApplicationsTab({
             </p>
           </div>
         </div>
-        <div className="overflow-hidden rounded-b-2xl">
-          <div className="overflow-x-auto">
+        <div className="overflow-hidden rounded-b-2xl md:min-h-0 md:flex-1">
+          <div className="overflow-x-auto md:h-full md:overflow-auto">
             <table className="min-w-full table-fixed text-sm">
               <colgroup>
                 {visibleTableColumns.map((column) => (
@@ -702,7 +702,7 @@ export function ApplicationsTab({
                 ))}
                 <col style={{ width: "120px" }} />
               </colgroup>
-              <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-muted-foreground dark:bg-zinc-900/60">
+              <thead className="sticky top-0 z-10 bg-zinc-50 text-xs uppercase tracking-wide text-muted-foreground dark:bg-zinc-900/60">
                 <tr>
                   {visibleTableColumns.map((column) => {
                     const isSorted = sortState.field === column.key
@@ -790,18 +790,16 @@ export function ApplicationsTab({
                       })}
                       <td className="px-5 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          {canViewMetadata(metadataByApplicationId[application.id]) ? (
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-zinc-500 hover:bg-emerald-100 hover:text-emerald-700 dark:text-zinc-400 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
-                              onClick={() => void openMetadataModal(application)}
-                              aria-label={`View extra info for ${application.companyName}`}
-                              disabled={refreshingMetadataApplicationId === application.id}
-                            >
-                              <Eye className="size-4" />
-                            </Button>
-                          ) : null}
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-zinc-500 hover:bg-emerald-100 hover:text-emerald-700 dark:text-zinc-400 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
+                            onClick={() => void openMetadataModal(application)}
+                            aria-label={`View extra info for ${application.companyName}`}
+                            disabled={refreshingMetadataApplicationId === application.id}
+                          >
+                            <Eye className="size-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon-sm"
@@ -822,7 +820,7 @@ export function ApplicationsTab({
         </div>
       </div>
 
-      {activeMetadata && activeApplication ? (
+      {activeApplication ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[2px]"
           onClick={() => setActiveMetadataApplicationId(null)}
@@ -854,10 +852,36 @@ export function ApplicationsTab({
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              {isBlockedByJobSite(activeMetadata) ? (
+              {!activeMetadata ? (
+                <MetadataCard
+                  label="Deeper Search"
+                  value={
+                    activeApplication.jobOfferLink
+                      ? "No extra information could be loaded for this application yet."
+                      : "No job offer link was saved for this application, so extra information could not be fetched automatically."
+                  }
+                  className="md:col-span-2"
+                />
+              ) : isBlockedByJobSite(activeMetadata) ? (
                 <MetadataCard
                   label="Deeper Search"
                   value="The request was blocked by the job posting site (HTTP 403), so extra information could not be fetched automatically."
+                  className="md:col-span-2"
+                />
+              ) : activeMetadata.extractionStatus === "failed" ? (
+                <MetadataCard
+                  label="Deeper Search"
+                  value={
+                    activeMetadata.extractionError ||
+                    "The job post could not be analyzed automatically."
+                  }
+                  className="md:col-span-2"
+                />
+              ) : activeMetadata.extractionStatus === "queued" ||
+                activeMetadata.extractionStatus === "processing" ? (
+                <MetadataCard
+                  label="Deeper Search"
+                  value="The analysis is still running for this job post. Please reopen this modal in a moment."
                   className="md:col-span-2"
                 />
               ) : (
@@ -889,23 +913,13 @@ export function ApplicationsTab({
 
             <div className="mt-5 border-t border-zinc-200 pt-4 text-xs text-muted-foreground dark:border-zinc-800">
               <span>
-                Extraction status: {activeMetadata.extractionStatus}
+                Extraction status: {activeMetadata?.extractionStatus ?? "unavailable"}
               </span>
             </div>
           </div>
         </div>
       ) : null}
     </section>
-  )
-}
-
-function canViewMetadata(metadata: JobApplicationMetadata | undefined) {
-  if (!metadata) return false
-  if (isBlockedByJobSite(metadata)) return true
-  if (metadata.extractionStatus === "failed") return false
-
-  return Boolean(
-    metadata.salaryText || metadata.locations.length > 0 || metadata.skills.length > 0
   )
 }
 

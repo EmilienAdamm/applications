@@ -1,4 +1,7 @@
+import { LogOut } from "lucide-react"
+
 import { OptionListEditor } from "@/components/job-tracker/option-list-editor"
+import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import type {
   OptionCategory,
@@ -13,6 +16,8 @@ interface SettingsTabProps {
   onRenameOption: (category: OptionCategory, id: string, newValue: string, newColor: string) => Promise<void>
   onDeleteOption: (category: OptionCategory, id: string) => Promise<void>
   onSetDeeperSearch: (enabled: boolean) => Promise<void>
+  onSignOut: () => Promise<void>
+  isSigningOut: boolean
 }
 
 export function SettingsTab({
@@ -22,6 +27,8 @@ export function SettingsTab({
   onRenameOption,
   onDeleteOption,
   onSetDeeperSearch,
+  onSignOut,
+  isSigningOut,
 }: SettingsTabProps) {
   return (
     <section className="space-y-4">
@@ -51,6 +58,25 @@ export function SettingsTab({
               aria-label="Toggle Deeper Search"
             />
           </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+          <div className="max-w-2xl">
+            <h3 className="text-lg font-semibold">Session</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Sign out from this device and return to the login screen.
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void onSignOut()}
+            disabled={isSigningOut}
+          >
+            <LogOut className="size-4" />
+            {isSigningOut ? "Signing out..." : "Sign out"}
+          </Button>
         </div>
       </section>
 
