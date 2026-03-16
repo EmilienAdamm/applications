@@ -9,6 +9,13 @@ export const metadata: Metadata = {
 }
 
 export default async function AnalysisRoutePage() {
-  const { applications } = await getAnalysisPageData()
-  return <AnalysisPage applications={applications} />
+  const { applications, metadataByApplicationId, deeperSearchEnabled } =
+    await getAnalysisPageData()
+  return (
+    <AnalysisPage
+      applications={applications}
+      metadataByApplicationId={metadataByApplicationId}
+      deeperSearchEnabled={deeperSearchEnabled}
+    />
+  )
 }

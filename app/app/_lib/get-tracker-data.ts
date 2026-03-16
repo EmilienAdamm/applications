@@ -17,6 +17,7 @@ import { fetchApplicationMetadataByUser } from "@/lib/job-tracker/job-applicatio
 import { fetchTrackerSettingsByUser } from "@/lib/job-tracker/tracker-settings-store"
 import type {
   JobApplication,
+  JobApplicationMetadata,
   OptionCategory,
   TrackerOptions,
 } from "@/lib/job-tracker/types"
@@ -172,7 +173,18 @@ export async function getApplicationsPageData() {
 export async function getAnalysisPageData() {
   const user = await requireTrackerUser()
   await ensureDefaultOptions(user.id, user.email ?? "")
-  return { applications: await fetchApplicationsByUser(user.id) }
+  const settings = await fetchTrackerSettingsByUser(user.id)
+
+  let metadataByApplicationId: Record<string, JobApplicationMetadata> = {}
+  if (settings.deeperSearchEnabled) {
+    metadataByApplicationId = await fetchApplicationMetadataByUser(user.id)
+  }
+
+  return {
+    applications: await fetchApplicationsByUser(user.id),
+    metadataByApplicationId,
+    deeperSearchEnabled: settings.deeperSearchEnabled,
+  }
 }
 
 export async function getSettingsPageData() {

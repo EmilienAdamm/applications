@@ -1,7 +1,9 @@
-"use client"
-
 import dynamic from "next/dynamic"
-import type { JobApplication } from "@/lib/job-tracker/types"
+import type {
+  JobApplication,
+  JobApplicationMetadata,
+} from "@/lib/job-tracker/types"
+import { buildAnalysisDataset } from "@/lib/job-tracker/analysis"
 
 const AnalysisTab = dynamic(
   () =>
@@ -26,8 +28,21 @@ const AnalysisTab = dynamic(
 
 interface AnalysisPageProps {
   applications: JobApplication[]
+  metadataByApplicationId: Record<string, JobApplicationMetadata>
+  deeperSearchEnabled: boolean
 }
 
-export function AnalysisPage({ applications }: AnalysisPageProps) {
-  return <AnalysisTab applications={applications} />
+export function AnalysisPage({
+  applications,
+  metadataByApplicationId,
+  deeperSearchEnabled,
+}: AnalysisPageProps) {
+  const analysis = buildAnalysisDataset(applications, metadataByApplicationId)
+
+  return (
+    <AnalysisTab
+      analysis={analysis}
+      deeperSearchEnabled={deeperSearchEnabled}
+    />
+  )
 }

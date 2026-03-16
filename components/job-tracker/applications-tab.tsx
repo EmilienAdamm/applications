@@ -610,7 +610,7 @@ export function ApplicationsTab({
       </div>
 
       <div className="relative rounded-2xl border border-white/70 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-900/80 md:flex md:min-h-0 md:flex-1 md:flex-col">
-        <div className="relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
+        <div className="relative z-30 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold">Applications list</h3>
             <label className="relative">
@@ -625,12 +625,12 @@ export function ApplicationsTab({
             </label>
           </div>
           <div className="flex items-center gap-2">
-            <details className="group relative">
+            <details className="group relative group-open:z-50">
               <summary className="flex h-8 cursor-pointer list-none items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 text-xs font-medium text-zinc-700 transition hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:border-zinc-600 [&::-webkit-details-marker]:hidden">
                 Columns
                 <ChevronDown className="size-3.5 transition group-open:rotate-180" />
               </summary>
-              <div className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="absolute right-0 z-50 mt-2 w-64 rounded-lg border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
                 <p className="px-2 pb-2 text-xs font-medium text-zinc-600 dark:text-zinc-300">
                   Show or hide columns
                 </p>
