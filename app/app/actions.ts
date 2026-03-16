@@ -28,6 +28,7 @@ import type {
 } from "@/lib/job-tracker/types"
 import { and, eq } from "drizzle-orm"
 import { headers } from "next/headers"
+import { buildDefaultUserOptions } from "@/lib/job-tracker/default-options"
 
 async function getAuthenticatedUserId(): Promise<string> {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -418,15 +419,7 @@ export async function seedDefaultOptionsIfNeeded(
 
   if (existing.length > 0) return false
 
-  await db.insert(userOptions).values([
-    { userId, category: "cvUsed",      value: "RESUME v1",  color: "zinc",    sortOrder: 0 },
-    { userId, category: "emailUsed",   value: userEmail,    color: "sky",     sortOrder: 0 },
-    { userId, category: "status",      value: "APPLIED",    color: "sky",     sortOrder: 0 },
-    { userId, category: "status",      value: "DENIED",     color: "red",     sortOrder: 1 },
-    { userId, category: "status",      value: "INTERVIEW",  color: "emerald", sortOrder: 2 },
-    { userId, category: "finalStatus", value: "DENIED",     color: "red",     sortOrder: 0 },
-    { userId, category: "finalStatus", value: "OFFER",      color: "emerald", sortOrder: 1 },
-  ])
+  await db.insert(userOptions).values(buildDefaultUserOptions(userId, userEmail))
 
   return true
 }

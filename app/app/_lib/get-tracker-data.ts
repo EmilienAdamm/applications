@@ -7,6 +7,12 @@ import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { jobApplications, userOptions } from "@/lib/db/schema"
+import {
+  buildDefaultUserOptions,
+  DEFAULT_STATUS_VALUE,
+  normalizeStatusValue,
+  sortStatusOptions,
+} from "@/lib/job-tracker/default-options"
 import { fetchApplicationMetadataByUser } from "@/lib/job-tracker/job-application-metadata-store"
 import { fetchTrackerSettingsByUser } from "@/lib/job-tracker/tracker-settings-store"
 import type {
@@ -71,17 +77,61 @@ async function ensureDefaultOptions(userId: string, userEmail: string) {
     .where(eq(userOptions.userId, userId))
     .limit(1)
 
-  if (existing.length > 0) return
+  if (existing.length === 0) {
+    await db.insert(userOptions).values(buildDefaultUserOptions(userId, userEmail))
+    return
+  }
 
-  await db.insert(userOptions).values([
-    { userId, category: "cvUsed", value: "RESUME v1", color: "zinc", sortOrder: 0 },
-    { userId, category: "emailUsed", value: userEmail, color: "sky", sortOrder: 0 },
-    { userId, category: "status", value: "APPLIED", color: "sky", sortOrder: 0 },
-    { userId, category: "status", value: "DENIED", color: "red", sortOrder: 1 },
-    { userId, category: "status", value: "INTERVIEW", color: "emerald", sortOrder: 2 },
-    { userId, category: "finalStatus", value: "DENIED", color: "red", sortOrder: 0 },
-    { userId, category: "finalStatus", value: "OFFER", color: "emerald", sortOrder: 1 },
-  ])
+  const statusOptions = await db
+    .select()
+    .from(userOptions)
+    .where(eq(userOptions.userId, userId))
+    .orderBy(asc(userOptions.category), asc(userOptions.sortOrder), asc(userOptions.createdAt))
+
+  const existingStatusRows = statusOptions.filter((row) => row.category === "status")
+  const hasNotAppliedYet = existingStatusRows.some(
+    (row) => normalizeStatusValue(row.value) === DEFAULT_STATUS_VALUE
+  )
+
+  let nextStatusRows = existingStatusRows
+
+  if (existingStatusRows.length === 0) {
+    const insertedRows = await db
+      .insert(userOptions)
+      .values(
+        buildDefaultUserOptions(userId, userEmail).filter(
+          (row) => row.category === "status"
+        )
+      )
+      .returning()
+    nextStatusRows = insertedRows
+  } else if (!hasNotAppliedYet) {
+    const [insertedRow] = await db
+      .insert(userOptions)
+      .values({
+        userId,
+        category: "status",
+        value: DEFAULT_STATUS_VALUE,
+        color: "zinc",
+        sortOrder: 0,
+      })
+      .returning()
+
+    if (insertedRow) {
+      nextStatusRows = [...existingStatusRows, insertedRow]
+    }
+  }
+
+  const orderedStatusRows = sortStatusOptions(nextStatusRows)
+  await Promise.all(
+    orderedStatusRows.map((row, index) => {
+      if (row.sortOrder === index) return Promise.resolve()
+      return db
+        .update(userOptions)
+        .set({ sortOrder: index })
+        .where(eq(userOptions.id, row.id))
+    })
+  )
 }
 
 async function fetchApplicationsByUser(userId: string) {
@@ -121,6 +171,7 @@ export async function getApplicationsPageData() {
 
 export async function getAnalysisPageData() {
   const user = await requireTrackerUser()
+  await ensureDefaultOptions(user.id, user.email ?? "")
   return { applications: await fetchApplicationsByUser(user.id) }
 }
 

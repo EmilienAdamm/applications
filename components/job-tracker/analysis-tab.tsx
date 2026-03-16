@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from "react"
 
+import { isNotAppliedYetStatus, normalizeStatusValue } from "@/lib/job-tracker/default-options"
 import type { JobApplication } from "@/lib/job-tracker/types"
 
 interface AnalysisTabProps {
@@ -176,15 +177,22 @@ function dateLabel(date: string) {
 
 function countNoResponse(applications: JobApplication[]) {
   return applications.filter((application) => {
-    const status = application.status.trim().toUpperCase()
-    const finalStatus = application.finalStatus.trim().toUpperCase()
+    const status = normalizeStatusValue(application.status)
+    const finalStatus = normalizeStatusValue(application.finalStatus)
     return status === "APPLIED" && finalStatus === ""
+  }).length
+}
+
+function countNotAppliedYet(applications: JobApplication[]) {
+  return applications.filter((application) => {
+    const finalStatus = normalizeStatusValue(application.finalStatus)
+    return isNotAppliedYetStatus(application.status) && finalStatus === ""
   }).length
 }
 
 function countActive(applications: JobApplication[]) {
   return applications.filter((application) => {
-    const finalStatus = application.finalStatus.trim().toUpperCase()
+    const finalStatus = normalizeStatusValue(application.finalStatus)
     return finalStatus !== "DENIED" && finalStatus !== "OFFER"
   }).length
 }
@@ -197,16 +205,16 @@ function countInterviews(applications: JobApplication[]) {
 
 function countRejections(applications: JobApplication[]) {
   return applications.filter((application) => {
-    const status = application.status.trim().toUpperCase()
-    const finalStatus = application.finalStatus.trim().toUpperCase()
+    const status = normalizeStatusValue(application.status)
+    const finalStatus = normalizeStatusValue(application.finalStatus)
     return status === "DENIED" || finalStatus === "DENIED"
   }).length
 }
 
 function countOffers(applications: JobApplication[]) {
   return applications.filter((application) => {
-    const status = application.status.trim().toUpperCase()
-    const finalStatus = application.finalStatus.trim().toUpperCase()
+    const status = normalizeStatusValue(application.status)
+    const finalStatus = normalizeStatusValue(application.finalStatus)
     return (
       status === "OFFER" ||
       finalStatus === "OFFER" ||
@@ -498,12 +506,16 @@ export function AnalysisTab({ applications }: AnalysisTabProps) {
   const cvBreakdown = getCvBreakdown(applications)
   const dailySeries = getDailySeries(applications)
 
+  const notAppliedYetCount = countNotAppliedYet(applications)
   const noResponseCount = countNoResponse(applications)
   const activeCount = countActive(applications)
   const interviewCount = countInterviews(applications)
   const rejectionCount = countRejections(applications)
   const offerCount = countOffers(applications)
-  const responseCount = Math.max(totalApplications - noResponseCount, 0)
+  const responseCount = Math.max(
+    totalApplications - notAppliedYetCount - noResponseCount,
+    0
+  )
   const rejectedFromResponses = Math.min(rejectionCount, responseCount)
   const offersFromResponses = Math.min(
     offerCount,
@@ -571,17 +583,19 @@ export function AnalysisTab({ applications }: AnalysisTabProps) {
   }
 
   const flowWidth = 980
-  const flowHeight = 360
+  const flowHeight = 420
   const flowNodeWidth = 168
   const flowNodeHeight = 64
   const flowSource = { x: 30, y: 148 }
-  const flowNoResponse = { x: 324, y: 62 }
-  const flowResponses = { x: 324, y: 236 }
-  const flowRejections = { x: 620, y: 48 }
+  const flowNotAppliedYet = { x: 324, y: 28 }
+  const flowNoResponse = { x: 324, y: 148 }
+  const flowResponses = { x: 324, y: 268 }
+  const flowRejections = { x: 620, y: 28 }
   const flowOffers = { x: 620, y: 148 }
-  const flowInProgress = { x: 620, y: 248 }
+  const flowInProgress = { x: 620, y: 268 }
   const flowNodes = [
     { key: "applications", label: "Applications", value: totalApplications, color: "#0f766e", ...flowSource },
+    { key: "not-applied-yet", label: "Not applied yet", value: notAppliedYetCount, color: "#a855f7", ...flowNotAppliedYet },
     { key: "no-response", label: "No response", value: noResponseCount, color: "#f59e0b", ...flowNoResponse },
     { key: "responses", label: "Responses", value: responseCount, color: "#0284c7", ...flowResponses },
     { key: "rejections", label: "Rejections", value: rejectedFromResponses, color: "#ef4444", ...flowRejections },
@@ -590,14 +604,21 @@ export function AnalysisTab({ applications }: AnalysisTabProps) {
   ] as const
   const flowLinks = [
     {
-      key: "applied-no-response",
+      key: "applications-not-applied-yet",
+      from: flowSource,
+      to: flowNotAppliedYet,
+      value: notAppliedYetCount,
+      color: "#c084fc",
+    },
+    {
+      key: "applications-no-response",
       from: flowSource,
       to: flowNoResponse,
       value: noResponseCount,
       color: "#f59e0b",
     },
     {
-      key: "applied-responses",
+      key: "applications-responses",
       from: flowSource,
       to: flowResponses,
       value: responseCount,
@@ -819,7 +840,7 @@ export function AnalysisTab({ applications }: AnalysisTabProps) {
         <article className="rounded-2xl border border-white/70 bg-white p-5 shadow-sm xl:col-span-3 dark:border-white/10 dark:bg-zinc-900/80">
           <h3 className="text-base font-semibold">Application flow</h3>
           <p className="text-xs text-muted-foreground">
-            Flow from total applications to outcomes (no response, responses, rejections, offers).
+            Flow from total applications to not applied yet, no response, responses, and outcomes.
           </p>
           <div className="mt-4 overflow-x-auto">
             <svg
