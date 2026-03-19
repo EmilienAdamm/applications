@@ -9,6 +9,7 @@ import {
   Download,
   Eye,
   ExternalLink,
+  Loader2,
   Search,
   Trash2,
   Upload,
@@ -125,6 +126,7 @@ export function ApplicationsTab({
   const [form, setForm] = useState<NewApplicationForm>(() =>
     buildDefaultForm(options)
   )
+  const [isSavingApplication, setIsSavingApplication] = useState(false)
   const [isAddLineOpen, setIsAddLineOpen] = useState(false)
   const [editingCell, setEditingCell] = useState<{
     id: string
@@ -464,21 +466,31 @@ export function ApplicationsTab({
             onSubmit={async (event) => {
               event.preventDefault()
 
-              if (!form.companyName.trim() || !form.jobPosition.trim()) {
+              if (
+                isSavingApplication ||
+                !form.companyName.trim() ||
+                !form.jobPosition.trim()
+              ) {
                 return
               }
 
-              await onAddApplication({
-                ...form,
-                cvUsed: getSafeOptionValue(options.cvUsed, form.cvUsed),
-                emailUsed: getSafeOptionValue(options.emailUsed, form.emailUsed),
-                status: getSafeOptionValue(options.status, form.status),
-                finalStatus: form.finalStatus
-                  ? getSafeOptionValue(options.finalStatus, form.finalStatus)
-                  : "",
-              })
+              setIsSavingApplication(true)
 
-              setForm(buildDefaultForm(options))
+              try {
+                await onAddApplication({
+                  ...form,
+                  cvUsed: getSafeOptionValue(options.cvUsed, form.cvUsed),
+                  emailUsed: getSafeOptionValue(options.emailUsed, form.emailUsed),
+                  status: getSafeOptionValue(options.status, form.status),
+                  finalStatus: form.finalStatus
+                    ? getSafeOptionValue(options.finalStatus, form.finalStatus)
+                    : "",
+                })
+
+                setForm(buildDefaultForm(options))
+              } finally {
+                setIsSavingApplication(false)
+              }
             }}
           >
           <label className="space-y-1 text-sm md:col-span-2">
@@ -603,7 +615,26 @@ export function ApplicationsTab({
           </label>
 
             <div className="md:col-span-2 xl:col-span-4">
-              <Button type="submit">Save application</Button>
+              <Button
+                type="submit"
+                disabled={isSavingApplication}
+                aria-busy={isSavingApplication}
+                className={cn(
+                  "min-w-[10rem]",
+                  isSavingApplication
+                    ? "bg-emerald-600 text-white hover:bg-emerald-600 dark:bg-emerald-500 dark:hover:bg-emerald-500"
+                    : ""
+                )}
+              >
+                {isSavingApplication ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save application"
+                )}
+              </Button>
             </div>
           </form>
         ) : null}
