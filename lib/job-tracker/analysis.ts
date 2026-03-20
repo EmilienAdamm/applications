@@ -79,9 +79,12 @@ export interface AnalysisOverview {
   offerCount: number
   notAppliedYetCount: number
   responseCount: number
-  rejectedFromResponses: number
-  offersFromResponses: number
-  inProgressFromResponses: number
+  directRejectionCount: number
+  directOfferCount: number
+  directInProgressCount: number
+  interviewRejectionCount: number
+  interviewOfferCount: number
+  interviewInProgressCount: number
 }
 
 export interface CountByLabel {
@@ -471,9 +474,7 @@ function countActive(applications: JobApplication[]) {
 }
 
 function countInterviews(applications: JobApplication[]) {
-  return applications.filter((application) =>
-    /INTERVIEW/i.test(application.status)
-  ).length
+  return applications.filter(hasInterviewStage).length
 }
 
 function countRejections(applications: JobApplication[]) {
@@ -495,6 +496,91 @@ function countOffers(applications: JobApplication[]) {
       finalStatus === "ACCEPTED"
     )
   }).length
+}
+
+function hasInterviewStage(application: JobApplication) {
+  return /(interview|entretien)/i.test(application.status)
+}
+
+function hasFinalRejection(application: JobApplication) {
+  const status = normalizeStatusValue(application.status)
+  const finalStatus = normalizeStatusValue(application.finalStatus)
+  return status === "DENIED" || finalStatus === "DENIED"
+}
+
+function hasFinalOffer(application: JobApplication) {
+  const status = normalizeStatusValue(application.status)
+  const finalStatus = normalizeStatusValue(application.finalStatus)
+  return (
+    status === "OFFER" ||
+    finalStatus === "OFFER" ||
+    status === "ACCEPTED" ||
+    finalStatus === "ACCEPTED"
+  )
+}
+
+function buildResponseFlowBreakdown(applications: JobApplication[]) {
+  let directRejectionCount = 0
+  let directOfferCount = 0
+  let directInProgressCount = 0
+  let interviewRejectionCount = 0
+  let interviewOfferCount = 0
+  let interviewInProgressCount = 0
+
+  for (const application of applications) {
+    const finalStatus = normalizeStatusValue(application.finalStatus)
+
+    if (isNotAppliedYetStatus(application.status) && finalStatus === "") {
+      continue
+    }
+
+    if (
+      normalizeStatusValue(application.status) === "APPLIED" &&
+      finalStatus === ""
+    ) {
+      continue
+    }
+
+    const hasInterview = hasInterviewStage(application)
+    const isRejected = hasFinalRejection(application)
+    const isOffer = hasFinalOffer(application)
+
+    if (hasInterview) {
+      if (isRejected) {
+        interviewRejectionCount += 1
+        continue
+      }
+
+      if (isOffer) {
+        interviewOfferCount += 1
+        continue
+      }
+
+      interviewInProgressCount += 1
+      continue
+    }
+
+    if (isRejected) {
+      directRejectionCount += 1
+      continue
+    }
+
+    if (isOffer) {
+      directOfferCount += 1
+      continue
+    }
+
+    directInProgressCount += 1
+  }
+
+  return {
+    directRejectionCount,
+    directOfferCount,
+    directInProgressCount,
+    interviewRejectionCount,
+    interviewOfferCount,
+    interviewInProgressCount,
+  }
 }
 
 function getBubbleRadius(count: number, minCount: number, maxCount: number) {
@@ -616,12 +702,13 @@ function getWordBubbleLayout(topWords: WordCount[]): BubbleLayout {
 
 function buildFlowData(overview: AnalysisOverview) {
   const flowSource = { x: 28, y: 176 }
-  const flowNotAppliedYet = { x: 352, y: 26 }
-  const flowNoResponse = { x: 352, y: 176 }
-  const flowResponses = { x: 352, y: 326 }
-  const flowRejections = { x: 676, y: 26 }
-  const flowOffers = { x: 676, y: 176 }
-  const flowInProgress = { x: 676, y: 326 }
+  const flowNotAppliedYet = { x: 292, y: 26 }
+  const flowNoResponse = { x: 292, y: 176 }
+  const flowResponses = { x: 292, y: 326 }
+  const flowInterviews = { x: 556, y: 326 }
+  const flowRejections = { x: 820, y: 26 }
+  const flowOffers = { x: 820, y: 176 }
+  const flowInProgress = { x: 820, y: 326 }
 
   const flowNodes: FlowNode[] = [
     {
@@ -653,23 +740,31 @@ function buildFlowData(overview: AnalysisOverview) {
       ...flowResponses,
     },
     {
+      key: "interviews",
+      label: "Interviews",
+      value: overview.interviewCount,
+      color: "#14b8a6",
+      ...flowInterviews,
+    },
+    {
       key: "rejections",
       label: "Rejections",
-      value: overview.rejectedFromResponses,
+      value: overview.rejectionCount,
       color: "#ef4444",
       ...flowRejections,
     },
     {
       key: "offers",
       label: "Offers",
-      value: overview.offersFromResponses,
+      value: overview.offerCount,
       color: "#10b981",
       ...flowOffers,
     },
     {
       key: "in-progress",
       label: "In progress",
-      value: overview.inProgressFromResponses,
+      value:
+        overview.directInProgressCount + overview.interviewInProgressCount,
       color: "#6366f1",
       ...flowInProgress,
     },
@@ -698,24 +793,52 @@ function buildFlowData(overview: AnalysisOverview) {
       color: "#06b6d4",
     },
     {
+      key: "responses-interviews",
+      from: flowResponses,
+      to: flowInterviews,
+      value: overview.interviewCount,
+      color: "#14b8a6",
+    },
+    {
       key: "responses-rejections",
       from: flowResponses,
       to: flowRejections,
-      value: overview.rejectedFromResponses,
+      value: overview.directRejectionCount,
       color: "#fb7185",
     },
     {
       key: "responses-offers",
       from: flowResponses,
       to: flowOffers,
-      value: overview.offersFromResponses,
+      value: overview.directOfferCount,
       color: "#34d399",
     },
     {
       key: "responses-in-progress",
       from: flowResponses,
       to: flowInProgress,
-      value: overview.inProgressFromResponses,
+      value: overview.directInProgressCount,
+      color: "#818cf8",
+    },
+    {
+      key: "interviews-rejections",
+      from: flowInterviews,
+      to: flowRejections,
+      value: overview.interviewRejectionCount,
+      color: "#ef4444",
+    },
+    {
+      key: "interviews-offers",
+      from: flowInterviews,
+      to: flowOffers,
+      value: overview.interviewOfferCount,
+      color: "#10b981",
+    },
+    {
+      key: "interviews-in-progress",
+      from: flowInterviews,
+      to: flowInProgress,
+      value: overview.interviewInProgressCount,
       color: "#818cf8",
     },
   ]
@@ -738,15 +861,14 @@ export function buildAnalysisDataset(
     totalApplications - notAppliedYetCount - noResponseCount,
     0
   )
-  const rejectedFromResponses = Math.min(rejectionCount, responseCount)
-  const offersFromResponses = Math.min(
-    offerCount,
-    Math.max(responseCount - rejectedFromResponses, 0)
-  )
-  const inProgressFromResponses = Math.max(
-    responseCount - rejectedFromResponses - offersFromResponses,
-    0
-  )
+  const {
+    directRejectionCount,
+    directOfferCount,
+    directInProgressCount,
+    interviewRejectionCount,
+    interviewOfferCount,
+    interviewInProgressCount,
+  } = buildResponseFlowBreakdown(applications)
 
   const overview: AnalysisOverview = {
     totalApplications,
@@ -757,9 +879,12 @@ export function buildAnalysisDataset(
     offerCount,
     notAppliedYetCount,
     responseCount,
-    rejectedFromResponses,
-    offersFromResponses,
-    inProgressFromResponses,
+    directRejectionCount,
+    directOfferCount,
+    directInProgressCount,
+    interviewRejectionCount,
+    interviewOfferCount,
+    interviewInProgressCount,
   }
 
   const topWords = getTopWords(applications)

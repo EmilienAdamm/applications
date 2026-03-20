@@ -23,7 +23,7 @@ export function ApplicationFlowCard({
   flowLinks,
   className,
 }: ApplicationFlowCardProps) {
-  const flowWidth = 1080
+  const flowWidth = 1120
   const flowHeight = 500
   const flowNodeWidth = 186
   const flowNodeHeight = 72
@@ -36,7 +36,7 @@ export function ApplicationFlowCard({
   return (
     <AnalysisCard
       title="Application flow"
-      description="Flow from total applications to not applied yet, no response, responses, and outcomes."
+      description="Flow from applications to responses, interview stages, and final outcomes."
       className={className}
     >
       <div className="mt-4 overflow-x-auto">
