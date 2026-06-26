@@ -1,5 +1,7 @@
 import "server-only"
 
+import { resolveAtsAdapter } from "@/lib/job-tracker/ats/registry"
+
 export type JobPostMetadataStatus = "success" | "partial" | "failed"
 
 export interface JobPostMetadataResult {
@@ -321,6 +323,25 @@ export async function fetchJobPostMetadata(
   const normalizedUrl = normalizeJobPostUrl(url)
   if (!normalizedUrl) return null
 
+  // Prefer a structured ATS API when the URL belongs to a known provider, and
+  // only fall back to the generic Firecrawl scrape when there is no adapter or
+  // it could not extract anything useful.
+  const adapter = resolveAtsAdapter(normalizedUrl)
+  if (adapter) {
+    try {
+      const result = await adapter.fetch(normalizedUrl)
+      if (result && result.extractionStatus !== "failed") return result
+    } catch (error) {
+      console.error(`ATS adapter "${adapter.name}" failed`, error)
+    }
+  }
+
+  return fetchViaFirecrawl(normalizedUrl)
+}
+
+async function fetchViaFirecrawl(
+  normalizedUrl: string
+): Promise<JobPostMetadataResult> {
   const apiKey = process.env.FIRECRAWL_API_KEY
   if (!apiKey) {
     return createFailedResult(normalizedUrl, "FIRECRAWL_API_KEY is not configured")
@@ -655,7 +676,7 @@ function splitSkills(value: string): string[] {
   return findSkillsInText(cleaned)
 }
 
-function findSalaryInText(text: string): string | null {
+export function findSalaryInText(text: string): string | null {
   const normalized = text.replace(/\s+/g, " ")
   const patterns = [
     /(?:\$|€|£)\s?\d[\d,. ]{1,12}(?:k|K)?\s*(?:-|to|–|—)\s*(?:\$|€|£)?\s?\d[\d,. ]{1,12}(?:k|K)?(?:\s*(?:per|\/)\s*(?:year|yr|month|mo|hour|hr|day|week|annum))?/i,
@@ -676,7 +697,7 @@ function findLocationHints(text: string): string[] {
   return detectKnownLocations(text)
 }
 
-function findSkillsInText(text: string): string[] {
+export function findSkillsInText(text: string): string[] {
   const values = new Set<string>()
 
   for (const skill of COMMON_SKILLS) {
@@ -715,7 +736,7 @@ function extractMetaContent(html: string, name: string): string {
   return ""
 }
 
-function extractPlainText(html: string): string {
+export function extractPlainText(html: string): string {
   const withoutNoise = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -723,7 +744,7 @@ function extractPlainText(html: string): string {
   return cleanText(decodeHtmlEntities(text)).slice(0, 120_000)
 }
 
-function formatSalaryRange(
+export function formatSalaryRange(
   currency: string | null,
   minValue: number | null,
   maxValue: number | null | undefined,
@@ -854,11 +875,11 @@ function normalizeLocationLookup(value: string) {
     .trim()
 }
 
-function cleanText(value: string): string {
+export function cleanText(value: string): string {
   return value.replace(/\s+/g, " ").trim()
 }
 
-function decodeHtmlEntities(value: string): string {
+export function decodeHtmlEntities(value: string): string {
   return value
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
@@ -869,7 +890,7 @@ function decodeHtmlEntities(value: string): string {
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
 }
 
-function uniqueValues(values: string[]): string[] {
+export function uniqueValues(values: string[]): string[] {
   const seen = new Set<string>()
   const result: string[] = []
 

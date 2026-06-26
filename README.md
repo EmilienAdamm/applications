@@ -34,6 +34,8 @@ Main tracking workspace:
 
 When Deeper Search is enabled in settings, saving a job posting URL automatically queues an analysis of the source page. The extracted metadata is then attached to the application and can be viewed later from the dashboard.
 
+For links hosted on a known Applicant Tracking System (Greenhouse, Lever, Ashby), the metadata is pulled straight from the provider's public API — yielding the exact posting locations and, when available, structured salary data. Any other URL falls back to a Firecrawl scrape of the rendered page. Adding a new ATS provider is a single-file drop-in under [`lib/job-tracker/ats/`](./lib/job-tracker/ats/).
+
 ### `/app/analysis`
 
 Analytics page focused on the job search pipeline:
