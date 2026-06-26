@@ -13,11 +13,23 @@ export interface JobPostMetadataResult {
   fetchedAt: Date
 }
 
-const REQUEST_HEADERS = {
-  Accept: "text/html,application/xhtml+xml",
-  "Accept-Language": "en-US,en;q=0.9,fr;q=0.8",
-  "User-Agent":
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+const FIRECRAWL_API_URL = "https://api.firecrawl.dev/v2/scrape"
+
+// Firecrawl renders JavaScript and works around most anti-bot walls, so it needs
+// more headroom than a plain HTML fetch would.
+const FIRECRAWL_TIMEOUT_MS = 30_000
+
+interface FirecrawlScrapeResponse {
+  success?: boolean
+  error?: string
+  data?: {
+    rawHtml?: string
+    metadata?: {
+      url?: string
+      sourceURL?: string
+      statusCode?: number
+    }
+  }
 }
 
 const COMMON_SKILLS = [
@@ -309,33 +321,52 @@ export async function fetchJobPostMetadata(
   const normalizedUrl = normalizeJobPostUrl(url)
   if (!normalizedUrl) return null
 
+  const apiKey = process.env.FIRECRAWL_API_KEY
+  if (!apiKey) {
+    return createFailedResult(normalizedUrl, "FIRECRAWL_API_KEY is not configured")
+  }
+
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 8000)
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    FIRECRAWL_TIMEOUT_MS + 5000
+  )
 
   try {
-    const response = await fetch(normalizedUrl, {
+    const response = await fetch(FIRECRAWL_API_URL, {
+      method: "POST",
       cache: "no-store",
-      headers: REQUEST_HEADERS,
-      redirect: "follow",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        url: normalizedUrl,
+        formats: ["rawHtml"],
+        // Keep the full document (incl. <head>) so JSON-LD and meta tags survive.
+        onlyMainContent: false,
+        timeout: FIRECRAWL_TIMEOUT_MS,
+      }),
       signal: controller.signal,
     })
 
     if (!response.ok) {
+      const detail = await readFirecrawlError(response)
       return createFailedResult(
         normalizedUrl,
-        `Fetch failed with status ${response.status}`
+        `Firecrawl request failed with status ${response.status}${detail}`
       )
     }
 
-    const contentType = response.headers.get("content-type") ?? ""
-    if (!contentType.includes("text/html")) {
+    const payload = (await response.json()) as FirecrawlScrapeResponse
+    if (!payload.success || !payload.data?.rawHtml) {
       return createFailedResult(
         normalizedUrl,
-        `Unsupported content type: ${contentType || "unknown"}`
+        payload.error ?? "Firecrawl returned no HTML content"
       )
     }
 
-    const html = (await response.text()).slice(0, 400_000)
+    const html = payload.data.rawHtml.slice(0, 400_000)
     return extractJobPostMetadataFromHtml(normalizedUrl, html)
   } catch (error) {
     const message =
@@ -343,6 +374,15 @@ export async function fetchJobPostMetadata(
     return createFailedResult(normalizedUrl, message)
   } finally {
     clearTimeout(timeoutId)
+  }
+}
+
+async function readFirecrawlError(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as { error?: string }
+    return body?.error ? `: ${body.error}` : ""
+  } catch {
+    return ""
   }
 }
 

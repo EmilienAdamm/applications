@@ -70,6 +70,7 @@ Create a `.env.local` file for local development and define the same variables i
 | `BETTER_AUTH_SECRET` | Yes | Secret used by Better Auth to sign and protect auth data. Use a random value with at least 32 characters. |
 | `GOOGLE_CLIENT_ID` | Yes | Google OAuth client ID for sign-in. |
 | `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth client secret for sign-in. |
+| `FIRECRAWL_API_KEY` | For Deeper Search | API key from [Firecrawl](https://firecrawl.dev), used to fetch and render job posting pages for metadata extraction. Without it, Deeper Search marks applications as failed. |
 
 Example:
 
@@ -80,6 +81,7 @@ BETTER_AUTH_URL="http://localhost:3000"
 BETTER_AUTH_SECRET="replace-with-a-long-random-secret"
 GOOGLE_CLIENT_ID="replace-me"
 GOOGLE_CLIENT_SECRET="replace-me"
+FIRECRAWL_API_KEY="fc-replace-me"
 ```
 
 ## Database setup
