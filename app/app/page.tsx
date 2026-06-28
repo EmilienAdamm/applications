@@ -9,13 +9,14 @@ export const metadata: Metadata = {
 }
 
 export default async function AppPage() {
-  const { applications, metadataByApplicationId, options } =
+  const { applications, metadataByApplicationId, options, settings } =
     await getApplicationsPageData()
   return (
     <ApplicationsPage
       initialApplications={applications}
       initialMetadataByApplicationId={metadataByApplicationId}
       initialOptions={options}
+      initialSettings={settings}
     />
   )
 }

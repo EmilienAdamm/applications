@@ -74,6 +74,7 @@ export const jobApplicationMetadata = pgTable(
 export const trackerUserSettings = pgTable("tracker_user_settings", {
   userId: text("user_id").primaryKey(),
   deeperSearchEnabled: boolean("dipper_search_enabled").notNull().default(false),
+  automaticFetchEnabled: boolean("automatic_fetch_enabled").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })

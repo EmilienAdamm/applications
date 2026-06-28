@@ -167,13 +167,14 @@ export async function getApplicationsPageData() {
   const user = await requireTrackerUser()
   await ensureDefaultOptions(user.id, user.email ?? "")
 
-  const [applications, options, metadataByApplicationId] = await Promise.all([
+  const [applications, options, metadataByApplicationId, settings] = await Promise.all([
     fetchApplicationsByUser(user.id),
     fetchOptionsByUser(user.id),
     fetchApplicationMetadataByUser(user.id),
+    fetchTrackerSettingsByUser(user.id),
   ])
 
-  return { applications, options, metadataByApplicationId }
+  return { applications, options, metadataByApplicationId, settings }
 }
 
 export async function getAnalysisPageData() {

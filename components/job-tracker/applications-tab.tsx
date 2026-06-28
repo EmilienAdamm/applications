@@ -9,12 +9,20 @@ import {
   Download,
   Eye,
   ExternalLink,
+  AlertCircle,
   Loader2,
   Search,
+  Sparkles,
   Trash2,
   Upload,
 } from "lucide-react"
-import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import {
+  useMemo,
+  useRef,
+  useState,
+  type ClipboardEvent as ReactClipboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react"
 
 import { StatCard } from "@/components/job-tracker/stat-card"
 import { Button } from "@/components/ui/button"
@@ -23,6 +31,7 @@ import type {
   ApplicationFieldKey,
   JobApplication,
   JobApplicationMetadata,
+  JobPostLinkPreview,
   NewApplicationForm,
   TrackerOptions,
   TrackerStats,
@@ -40,7 +49,9 @@ interface ApplicationsTabProps {
   metadataByApplicationId: Record<string, JobApplicationMetadata>
   options: TrackerOptions
   stats: TrackerStats
+  automaticFetchEnabled: boolean
   onAddApplication: (form: NewApplicationForm) => Promise<void>
+  onFetchJobPostPreview: (url: string) => Promise<JobPostLinkPreview>
   onDeleteApplication: (id: string) => void
   onRefreshApplicationMetadata: (
     id: string
@@ -55,6 +66,12 @@ interface ApplicationsTabProps {
 }
 
 type ColumnType = "text" | "date" | "url" | "cvUsed" | "emailUsed" | "status" | "finalStatus"
+
+type JobPostPreviewState =
+  | { status: "idle" }
+  | { status: "loading"; url: string }
+  | { status: "success"; url: string; message: string }
+  | { status: "error"; url: string; message: string }
 
 interface TableColumn {
   key: ApplicationFieldKey
@@ -110,12 +127,23 @@ function sortIcon(direction: SortDirection) {
   return <ArrowUpDown className="size-3.5 opacity-50" />
 }
 
+function buildJobPostPreviewMessage(preview: JobPostLinkPreview) {
+  if (preview.companyName && preview.jobPosition) {
+    return "Company and job position filled from link preview"
+  }
+  if (preview.companyName) return "Company filled from link preview"
+  if (preview.jobPosition) return "Job position filled from link preview"
+  return "Link preview metadata found"
+}
+
 export function ApplicationsTab({
   applications,
   metadataByApplicationId,
   options,
   stats,
+  automaticFetchEnabled,
   onAddApplication,
+  onFetchJobPostPreview,
   onDeleteApplication,
   onRefreshApplicationMetadata,
   onUpdateApplicationField,
@@ -123,11 +151,14 @@ export function ApplicationsTab({
   onExport,
 }: ApplicationsTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const latestJobPreviewRequestRef = useRef(0)
   const [form, setForm] = useState<NewApplicationForm>(() =>
     buildDefaultForm(options)
   )
   const [isSavingApplication, setIsSavingApplication] = useState(false)
   const [isAddLineOpen, setIsAddLineOpen] = useState(false)
+  const [jobPostPreviewState, setJobPostPreviewState] =
+    useState<JobPostPreviewState>({ status: "idle" })
   const [totalApplicationsAnimation, setTotalApplicationsAnimation] = useState({
     key: 0,
     expectedTotal: stats.total,
@@ -279,6 +310,73 @@ export function ApplicationsTab({
 
   function beginEdit(applicationId: string, field: ApplicationFieldKey) {
     setEditingCell({ id: applicationId, field })
+  }
+
+  async function fetchAndApplyJobPostPreview(url: string) {
+    if (!automaticFetchEnabled) return
+
+    const trimmedUrl = url.trim()
+    if (!trimmedUrl) return
+
+    const requestId = latestJobPreviewRequestRef.current + 1
+    latestJobPreviewRequestRef.current = requestId
+    setJobPostPreviewState({ status: "loading", url: trimmedUrl })
+
+    const preview = await onFetchJobPostPreview(trimmedUrl)
+    if (latestJobPreviewRequestRef.current !== requestId) return
+
+    if (preview.extractionStatus === "failed") {
+      setJobPostPreviewState({
+        status: "error",
+        url: trimmedUrl,
+        message: "No link preview metadata found",
+      })
+      return
+    }
+
+    setForm((previous) => ({
+      ...previous,
+      jobOfferLink: trimmedUrl,
+      companyName:
+        previous.companyName.trim() || !preview.companyName
+          ? previous.companyName
+          : preview.companyName,
+      jobPosition:
+        previous.jobPosition.trim() || !preview.jobPosition
+          ? previous.jobPosition
+          : preview.jobPosition,
+    }))
+
+    setJobPostPreviewState({
+      status: "success",
+      url: trimmedUrl,
+      message: buildJobPostPreviewMessage(preview),
+    })
+  }
+
+  function handleJobOfferLinkPaste(event: ReactClipboardEvent<HTMLInputElement>) {
+    const pastedText = event.clipboardData.getData("text").trim()
+    if (!pastedText) return
+
+    event.preventDefault()
+    setForm((previous) => ({
+      ...previous,
+      jobOfferLink: pastedText,
+    }))
+    void fetchAndApplyJobPostPreview(pastedText)
+  }
+
+  function handleJobOfferLinkBlur() {
+    const trimmedUrl = form.jobOfferLink.trim()
+    if (
+      !trimmedUrl ||
+      jobPostPreviewState.status === "loading" ||
+      ("url" in jobPostPreviewState && jobPostPreviewState.url === trimmedUrl)
+    ) {
+      return
+    }
+
+    void fetchAndApplyJobPostPreview(trimmedUrl)
   }
 
   function toggleColumnVisibility(field: ApplicationFieldKey) {
@@ -502,6 +600,7 @@ export function ApplicationsTab({
                   expectedTotal: totalBeforeSave + 1,
                 }))
                 setForm(buildDefaultForm(options))
+                setJobPostPreviewState({ status: "idle" })
               } finally {
                 setIsSavingApplication(false)
               }
@@ -557,14 +656,41 @@ export function ApplicationsTab({
             <input
               type="url"
               value={form.jobOfferLink}
-              onChange={(event) =>
+              onChange={(event) => {
+                const nextValue = event.target.value
                 setForm((previous) => ({
                   ...previous,
-                  jobOfferLink: event.target.value,
+                  jobOfferLink: nextValue,
                 }))
-              }
+                if (!nextValue.trim()) {
+                  setJobPostPreviewState({ status: "idle" })
+                }
+              }}
+              onPaste={handleJobOfferLinkPaste}
+              onBlur={handleJobOfferLinkBlur}
               className="h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 outline-none ring-emerald-500/30 focus:ring-4 dark:border-zinc-700 dark:bg-zinc-950"
             />
+            {jobPostPreviewState.status !== "idle" ? (
+              <span
+                className={cn(
+                  "flex min-h-5 items-center gap-1.5 text-xs",
+                  jobPostPreviewState.status === "error"
+                    ? "text-amber-700 dark:text-amber-300"
+                    : "text-emerald-700 dark:text-emerald-300"
+                )}
+              >
+                {jobPostPreviewState.status === "loading" ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : jobPostPreviewState.status === "error" ? (
+                  <AlertCircle className="size-3.5" />
+                ) : (
+                  <Sparkles className="size-3.5" />
+                )}
+                {jobPostPreviewState.status === "loading"
+                  ? "Reading link preview..."
+                  : jobPostPreviewState.message}
+              </span>
+            ) : null}
           </label>
 
           <label className="space-y-1 text-sm">

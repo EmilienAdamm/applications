@@ -64,8 +64,18 @@ export interface JobApplicationMetadata {
   fetchedAt: string
 }
 
+export interface JobPostLinkPreview {
+  sourceUrl: string
+  sourceTitle: string
+  companyName: string
+  jobPosition: string
+  extractionStatus: "success" | "partial" | "failed"
+  extractionError: string
+}
+
 export interface TrackerSettings {
   deeperSearchEnabled: boolean
+  automaticFetchEnabled: boolean
 }
 
 export interface NewApplicationForm {

@@ -9,6 +9,7 @@ import {
   deleteOption,
   renameOption,
   setFavoriteOption,
+  updateAutomaticFetchPreference,
   updateDeeperSearchPreference,
 } from "@/app/app/actions"
 import { useToast } from "@/components/ui/toast-provider"
@@ -160,6 +161,18 @@ export function SettingsPage({
     success("Deeper Search disabled")
   }
 
+  async function handleSetAutomaticFetch(enabled: boolean) {
+    const result = await updateAutomaticFetchPreference(enabled)
+    setSettings(result)
+
+    success(
+      enabled ? "Automatic Fetch enabled" : "Automatic Fetch disabled",
+      enabled
+        ? "Pasted job links will try to fill company and role automatically"
+        : "Pasted job links will stay as plain links"
+    )
+  }
+
   async function handleSignOut() {
     if (isSigningOut) return
 
@@ -184,6 +197,7 @@ export function SettingsPage({
       onSetFavoriteOption={handleSetFavoriteOption}
       onDeleteOption={handleDeleteOption}
       onSetDeeperSearch={handleSetDeeperSearch}
+      onSetAutomaticFetch={handleSetAutomaticFetch}
       onSignOut={handleSignOut}
       isSigningOut={isSigningOut}
     />

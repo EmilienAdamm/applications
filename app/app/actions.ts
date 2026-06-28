@@ -13,15 +13,18 @@ import {
   runApplicationMetadataSearch,
   syncApplicationMetadata,
 } from "@/lib/job-tracker/job-application-metadata-store"
+import { fetchJobPostLinkPreview } from "@/lib/job-tracker/job-post-link-preview"
 import { normalizeJobPostUrl } from "@/lib/job-tracker/job-post-metadata"
 import {
   fetchTrackerSettingsByUser,
+  updateAutomaticFetchSetting,
   updateDeeperSearchSetting,
 } from "@/lib/job-tracker/tracker-settings-store"
 import { ensureUserOptionsStorage } from "@/lib/job-tracker/user-options-store"
 import type {
   ApplicationFieldKey,
   JobApplicationMetadata,
+  JobPostLinkPreview,
   NewApplicationForm,
   OptionCategory,
   TrackerSettings,
@@ -109,6 +112,13 @@ export async function addApplication(
   }
 
   return { id: row.id, metadata, deeperSearchQueued: shouldQueueDeeperSearch }
+}
+
+export async function fetchJobPostPreview(
+  url: string
+): Promise<JobPostLinkPreview> {
+  await getAuthenticatedUserId()
+  return fetchJobPostLinkPreview(url)
 }
 
 export async function deleteApplication(id: string): Promise<void> {
@@ -200,6 +210,8 @@ export async function updateDeeperSearchPreference(enabled: boolean): Promise<{
 }> {
   const userId = await getAuthenticatedUserId()
   const settings = await updateDeeperSearchSetting(userId, enabled)
+  revalidatePath("/app")
+  revalidatePath("/app/settings")
 
   if (!enabled) {
     return { settings, queuedApplications: 0 }
@@ -260,6 +272,16 @@ export async function updateDeeperSearchPreference(enabled: boolean): Promise<{
     settings,
     queuedApplications: queuedApplications.length,
   }
+}
+
+export async function updateAutomaticFetchPreference(
+  enabled: boolean
+): Promise<TrackerSettings> {
+  const userId = await getAuthenticatedUserId()
+  const settings = await updateAutomaticFetchSetting(userId, enabled)
+  revalidatePath("/app")
+  revalidatePath("/app/settings")
+  return settings
 }
 
 // ─── Options ─────────────────────────────────────────────────────────────────

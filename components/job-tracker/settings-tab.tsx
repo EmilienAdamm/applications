@@ -17,6 +17,7 @@ interface SettingsTabProps {
   onSetFavoriteOption: (category: OptionCategory, id: string) => Promise<void>
   onDeleteOption: (category: OptionCategory, id: string) => Promise<void>
   onSetDeeperSearch: (enabled: boolean) => Promise<void>
+  onSetAutomaticFetch: (enabled: boolean) => Promise<void>
   onSignOut: () => Promise<void>
   isSigningOut: boolean
 }
@@ -29,6 +30,7 @@ export function SettingsTab({
   onSetFavoriteOption,
   onDeleteOption,
   onSetDeeperSearch,
+  onSetAutomaticFetch,
   onSignOut,
   isSigningOut,
 }: SettingsTabProps) {
@@ -58,6 +60,26 @@ export function SettingsTab({
               checked={settings.deeperSearchEnabled}
               onCheckedChange={(checked) => void onSetDeeperSearch(checked)}
               aria-label="Toggle Deeper Search"
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 flex items-start justify-between gap-4 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+          <div className="max-w-2xl">
+            <h3 className="text-lg font-semibold">Automatic Fetch</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Automatically read job link previews when a job offer link is pasted in the add form.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
+            <span className="min-w-16 text-sm font-medium text-right">
+              {settings.automaticFetchEnabled ? "Enabled" : "Disabled"}
+            </span>
+            <Switch
+              checked={settings.automaticFetchEnabled}
+              onCheckedChange={(checked) => void onSetAutomaticFetch(checked)}
+              aria-label="Toggle Automatic Fetch"
             />
           </div>
         </div>

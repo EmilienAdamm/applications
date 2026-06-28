@@ -5,6 +5,7 @@ import { useMemo, useReducer, useState } from "react"
 import {
   addApplication,
   fetchApplicationMetadata,
+  fetchJobPostPreview,
   deleteApplication,
   importApplications,
   type ParsedImportRow,
@@ -18,8 +19,10 @@ import type {
   ApplicationFieldKey,
   JobApplication,
   JobApplicationMetadata,
+  JobPostLinkPreview,
   NewApplicationForm,
   TrackerOptions,
+  TrackerSettings,
 } from "@/lib/job-tracker/types"
 
 function containsInterview(status: string) {
@@ -30,12 +33,14 @@ interface ApplicationsPageProps {
   initialApplications: JobApplication[]
   initialMetadataByApplicationId: Record<string, JobApplicationMetadata>
   initialOptions: TrackerOptions
+  initialSettings: TrackerSettings
 }
 
 export function ApplicationsPage({
   initialApplications,
   initialMetadataByApplicationId,
   initialOptions,
+  initialSettings,
 }: ApplicationsPageProps) {
   const { loading, success, update } = useToast()
   const [state, dispatch] = useReducer(trackerReducer, {
@@ -76,6 +81,12 @@ export function ApplicationsPage({
       )
       void watchDeeperSearch(result.id, toastId)
     }
+  }
+
+  async function handleFetchJobPostPreview(
+    url: string
+  ): Promise<JobPostLinkPreview> {
+    return fetchJobPostPreview(url)
   }
 
   async function handleDeleteApplication(id: string) {
@@ -279,7 +290,9 @@ export function ApplicationsPage({
       metadataByApplicationId={metadataByApplicationId}
       options={state.options}
       stats={stats}
+      automaticFetchEnabled={initialSettings.automaticFetchEnabled}
       onAddApplication={handleAddApplication}
+      onFetchJobPostPreview={handleFetchJobPostPreview}
       onDeleteApplication={handleDeleteApplication}
       onRefreshApplicationMetadata={handleRefreshApplicationMetadata}
       onUpdateApplicationField={handleUpdateApplicationField}
