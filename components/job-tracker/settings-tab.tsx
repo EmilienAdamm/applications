@@ -14,6 +14,7 @@ interface SettingsTabProps {
   settings: TrackerSettings
   onAddOption: (category: OptionCategory, value: string, color: string) => Promise<void>
   onRenameOption: (category: OptionCategory, id: string, newValue: string, newColor: string) => Promise<void>
+  onSetFavoriteOption: (category: OptionCategory, id: string) => Promise<void>
   onDeleteOption: (category: OptionCategory, id: string) => Promise<void>
   onSetDeeperSearch: (enabled: boolean) => Promise<void>
   onSignOut: () => Promise<void>
@@ -25,6 +26,7 @@ export function SettingsTab({
   settings,
   onAddOption,
   onRenameOption,
+  onSetFavoriteOption,
   onDeleteOption,
   onSetDeeperSearch,
   onSignOut,
@@ -87,6 +89,7 @@ export function SettingsTab({
           values={options.cvUsed}
           onAdd={(value, color) => onAddOption("cvUsed", value, color)}
           onRename={(id, newValue, newColor) => onRenameOption("cvUsed", id, newValue, newColor)}
+          onSetFavorite={(id) => onSetFavoriteOption("cvUsed", id)}
           onDelete={(id) => onDeleteOption("cvUsed", id)}
         />
         <OptionListEditor
@@ -95,6 +98,7 @@ export function SettingsTab({
           values={options.emailUsed}
           onAdd={(value, color) => onAddOption("emailUsed", value, color)}
           onRename={(id, newValue, newColor) => onRenameOption("emailUsed", id, newValue, newColor)}
+          onSetFavorite={(id) => onSetFavoriteOption("emailUsed", id)}
           onDelete={(id) => onDeleteOption("emailUsed", id)}
         />
         <OptionListEditor
@@ -103,6 +107,7 @@ export function SettingsTab({
           values={options.status}
           onAdd={(value, color) => onAddOption("status", value, color)}
           onRename={(id, newValue, newColor) => onRenameOption("status", id, newValue, newColor)}
+          onSetFavorite={(id) => onSetFavoriteOption("status", id)}
           onDelete={(id) => onDeleteOption("status", id)}
         />
         <OptionListEditor
@@ -111,6 +116,7 @@ export function SettingsTab({
           values={options.finalStatus}
           onAdd={(value, color) => onAddOption("finalStatus", value, color)}
           onRename={(id, newValue, newColor) => onRenameOption("finalStatus", id, newValue, newColor)}
+          onSetFavorite={(id) => onSetFavoriteOption("finalStatus", id)}
           onDelete={(id) => onDeleteOption("finalStatus", id)}
         />
       </div>

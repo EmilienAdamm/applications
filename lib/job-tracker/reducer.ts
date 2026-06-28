@@ -140,6 +140,22 @@ export function trackerReducer(
       }
     }
 
+    case "set_favorite_option": {
+      const { category, id } = action.payload
+      const optionsByCategory = state.options[category]
+
+      return {
+        ...state,
+        options: {
+          ...state.options,
+          [category]: optionsByCategory.map((option) => ({
+            ...option,
+            isFavorite: option.id === id,
+          })),
+        },
+      }
+    }
+
     case "delete_option": {
       const { category, id, value } = action.payload
       const optionsByCategory = state.options[category]

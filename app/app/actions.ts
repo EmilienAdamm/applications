@@ -1,6 +1,7 @@
 "use server"
 
 import { after } from "next/server"
+import { revalidatePath } from "next/cache"
 
 import { db } from "@/lib/db"
 import { jobApplications, userOptions } from "@/lib/db/schema"
@@ -17,6 +18,7 @@ import {
   fetchTrackerSettingsByUser,
   updateDeeperSearchSetting,
 } from "@/lib/job-tracker/tracker-settings-store"
+import { ensureUserOptionsStorage } from "@/lib/job-tracker/user-options-store"
 import type {
   ApplicationFieldKey,
   JobApplicationMetadata,
@@ -26,7 +28,7 @@ import type {
   TrackerOptions,
   UserOption,
 } from "@/lib/job-tracker/types"
-import { and, eq } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 import { headers } from "next/headers"
 import { buildDefaultUserOptions } from "@/lib/job-tracker/default-options"
 
@@ -264,6 +266,7 @@ export async function updateDeeperSearchPreference(enabled: boolean): Promise<{
 
 export async function fetchOptions(): Promise<TrackerOptions> {
   const userId = await getAuthenticatedUserId()
+  await ensureUserOptionsStorage()
   const rows = await db
     .select()
     .from(userOptions)
@@ -284,6 +287,7 @@ export async function fetchOptions(): Promise<TrackerOptions> {
       id: row.id,
       value: row.value,
       color: row.color,
+      isFavorite: row.isFavorite,
       sortOrder: row.sortOrder,
     })
     return acc
@@ -296,6 +300,7 @@ export async function addOption(
   color: string
 ): Promise<UserOption> {
   const userId = await getAuthenticatedUserId()
+  await ensureUserOptionsStorage()
   const existingInCategory = await db
     .select({ sortOrder: userOptions.sortOrder })
     .from(userOptions)
@@ -316,6 +321,7 @@ export async function addOption(
     id: row.id,
     value: row.value,
     color: row.color,
+    isFavorite: row.isFavorite,
     sortOrder: row.sortOrder,
   }
 }
@@ -326,6 +332,7 @@ export async function renameOption(
   newColor: string
 ): Promise<void> {
   const userId = await getAuthenticatedUserId()
+  await ensureUserOptionsStorage()
 
   const [existing] = await db
     .select()
@@ -358,8 +365,44 @@ export async function renameOption(
   })
 }
 
+export async function setFavoriteOption(
+  category: OptionCategory,
+  optionId: string
+): Promise<void> {
+  const userId = await getAuthenticatedUserId()
+  await ensureUserOptionsStorage()
+
+  const [existing] = await db
+    .select({ id: userOptions.id })
+    .from(userOptions)
+    .where(
+      and(
+        eq(userOptions.id, optionId),
+        eq(userOptions.userId, userId),
+        eq(userOptions.category, category)
+      )
+    )
+    .limit(1)
+
+  if (!existing) return
+
+  await db
+    .update(userOptions)
+    .set({ isFavorite: sql`${userOptions.id} = ${optionId}` })
+    .where(
+      and(
+        eq(userOptions.userId, userId),
+        eq(userOptions.category, category)
+      )
+    )
+
+  revalidatePath("/app")
+  revalidatePath("/app/settings")
+}
+
 export async function deleteOption(optionId: string): Promise<string> {
   const userId = await getAuthenticatedUserId()
+  await ensureUserOptionsStorage()
 
   const [existing] = await db
     .select()
@@ -410,6 +453,7 @@ export async function seedDefaultOptionsIfNeeded(
   userEmail: string
 ): Promise<boolean> {
   const userId = await getAuthenticatedUserId()
+  await ensureUserOptionsStorage()
 
   const existing = await db
     .select({ id: userOptions.id })
@@ -447,6 +491,7 @@ export async function importApplications(
   rows: ParsedImportRow[]
 ): Promise<ImportResult> {
   const userId = await getAuthenticatedUserId()
+  await ensureUserOptionsStorage()
   const settings = await fetchTrackerSettingsByUser(userId)
 
   // ── 1. Collect all unique option values from the import ──────────────────
@@ -498,6 +543,7 @@ export async function importApplications(
             id: row.id,
             value: row.value,
             color: row.color,
+            isFavorite: row.isFavorite,
             sortOrder: row.sortOrder,
           },
         })

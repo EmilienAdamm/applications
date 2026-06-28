@@ -15,6 +15,7 @@ import {
 } from "@/lib/job-tracker/default-options"
 import { fetchApplicationMetadataByUser } from "@/lib/job-tracker/job-application-metadata-store"
 import { fetchTrackerSettingsByUser } from "@/lib/job-tracker/tracker-settings-store"
+import { ensureUserOptionsStorage } from "@/lib/job-tracker/user-options-store"
 import type {
   JobApplication,
   JobApplicationMetadata,
@@ -64,6 +65,7 @@ function mapOptions(rows: Array<typeof userOptions.$inferSelect>): TrackerOption
       id: row.id,
       value: row.value,
       color: row.color,
+      isFavorite: row.isFavorite,
       sortOrder: row.sortOrder,
     })
 
@@ -72,6 +74,8 @@ function mapOptions(rows: Array<typeof userOptions.$inferSelect>): TrackerOption
 }
 
 async function ensureDefaultOptions(userId: string, userEmail: string) {
+  await ensureUserOptionsStorage()
+
   const existing = await db
     .select({ id: userOptions.id })
     .from(userOptions)
@@ -146,6 +150,8 @@ async function fetchApplicationsByUser(userId: string) {
 }
 
 async function fetchOptionsByUser(userId: string): Promise<TrackerOptions> {
+  await ensureUserOptionsStorage()
+
   const rows = await db
     .select()
     .from(userOptions)

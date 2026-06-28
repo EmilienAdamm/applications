@@ -38,6 +38,7 @@ export const userOptions = pgTable(
     category: text("category").notNull(),
     value: text("value").notNull(),
     color: text("color").notNull().default("zinc"),
+    isFavorite: boolean("is_favorite").notNull().default(false),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

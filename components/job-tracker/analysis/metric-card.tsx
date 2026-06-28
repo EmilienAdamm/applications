@@ -1,9 +1,14 @@
+import { AnimatedStatValue } from "@/components/job-tracker/animated-stat-value"
+
 interface MetricCardProps {
   label: string
   value: string | number
   percentage?: string
   percentageToneClassName?: string
   hoverToneClassName?: string
+  animateValue?: boolean
+  valueAnimationKey?: number
+  valueAnimationClassName?: string
 }
 
 export function MetricCard({
@@ -12,6 +17,9 @@ export function MetricCard({
   percentage,
   percentageToneClassName,
   hoverToneClassName,
+  animateValue = false,
+  valueAnimationKey = 0,
+  valueAnimationClassName,
 }: MetricCardProps) {
   return (
     <article
@@ -20,7 +28,17 @@ export function MetricCard({
       <p className="text-xs uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p>
+      <p className="mt-2 text-2xl font-semibold tracking-tight">
+        {animateValue ? (
+          <AnimatedStatValue
+            value={value}
+            animationKey={valueAnimationKey}
+            className={valueAnimationClassName}
+          />
+        ) : (
+          value
+        )}
+      </p>
       {percentage ? (
         <p
           className={`mt-1 text-xs font-medium ${percentageToneClassName ?? "text-muted-foreground"}`}

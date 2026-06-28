@@ -8,6 +8,7 @@ import {
   addOption,
   deleteOption,
   renameOption,
+  setFavoriteOption,
   updateDeeperSearchPreference,
 } from "@/app/app/actions"
 import { useToast } from "@/components/ui/toast-provider"
@@ -130,6 +131,18 @@ export function SettingsPage({
     success(`${optionCategoryLabel(category)} option deleted`, option.value)
   }
 
+  async function handleSetFavoriteOption(category: OptionCategory, id: string) {
+    const option = state.options[category].find((candidate) => candidate.id === id)
+    if (!option || option.isFavorite) return
+
+    await setFavoriteOption(category, id)
+    dispatch({
+      type: "set_favorite_option",
+      payload: { category, id },
+    })
+    success(`${optionCategoryLabel(category)} favorite updated`, option.value)
+  }
+
   async function handleSetDeeperSearch(enabled: boolean) {
     const result = await updateDeeperSearchPreference(enabled)
     setSettings(result.settings)
@@ -168,6 +181,7 @@ export function SettingsPage({
       settings={settings}
       onAddOption={handleAddOption}
       onRenameOption={handleRenameOption}
+      onSetFavoriteOption={handleSetFavoriteOption}
       onDeleteOption={handleDeleteOption}
       onSetDeeperSearch={handleSetDeeperSearch}
       onSignOut={handleSignOut}

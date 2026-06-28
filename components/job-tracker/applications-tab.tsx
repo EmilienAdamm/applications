@@ -128,6 +128,10 @@ export function ApplicationsTab({
   )
   const [isSavingApplication, setIsSavingApplication] = useState(false)
   const [isAddLineOpen, setIsAddLineOpen] = useState(false)
+  const [totalApplicationsAnimation, setTotalApplicationsAnimation] = useState({
+    key: 0,
+    expectedTotal: stats.total,
+  })
   const [editingCell, setEditingCell] = useState<{
     id: string
     field: ApplicationFieldKey
@@ -171,6 +175,10 @@ export function ApplicationsTab({
     () => TABLE_COLUMNS.filter((column) => visibleColumns[column.key]),
     [visibleColumns]
   )
+  const totalApplicationsAnimationKey =
+    stats.total >= totalApplicationsAnimation.expectedTotal
+      ? totalApplicationsAnimation.key
+      : 0
   const activeMetadata =
     activeMetadataApplicationId
       ? metadataByApplicationId[activeMetadataApplicationId] ?? null
@@ -427,6 +435,7 @@ export function ApplicationsTab({
         <StatCard
           label="Total applications"
           value={String(stats.total)}
+          valueAnimationKey={totalApplicationsAnimationKey}
           hint="All lines currently in your tracker."
         />
         <StatCard
@@ -475,6 +484,7 @@ export function ApplicationsTab({
               }
 
               setIsSavingApplication(true)
+              const totalBeforeSave = stats.total
 
               try {
                 await onAddApplication({
@@ -487,6 +497,10 @@ export function ApplicationsTab({
                     : "",
                 })
 
+                setTotalApplicationsAnimation((previous) => ({
+                  key: previous.key + 1,
+                  expectedTotal: totalBeforeSave + 1,
+                }))
                 setForm(buildDefaultForm(options))
               } finally {
                 setIsSavingApplication(false)

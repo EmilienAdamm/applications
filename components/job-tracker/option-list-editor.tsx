@@ -1,6 +1,6 @@
 "use client"
 
-import { Palette, Pencil, Plus, Trash2, X } from "lucide-react"
+import { Palette, Pencil, Plus, Star, Trash2, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -102,9 +102,16 @@ function ColorPickerPopover({ value, onChange, size = "default" }: ColorPickerPo
 interface OptionListEditorProps {
   title: string
   description: string
-  values: { id: string; value: string; color: string; sortOrder: number }[]
+  values: {
+    id: string
+    value: string
+    color: string
+    isFavorite: boolean
+    sortOrder: number
+  }[]
   onAdd: (value: string, color: string) => Promise<void>
   onRename: (id: string, newValue: string, newColor: string) => Promise<void>
+  onSetFavorite: (id: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }
 
@@ -114,6 +121,7 @@ export function OptionListEditor({
   values,
   onAdd,
   onRename,
+  onSetFavorite,
   onDelete,
 }: OptionListEditorProps) {
   const [newValue, setNewValue] = useState("")
@@ -121,6 +129,7 @@ export function OptionListEditor({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingText, setEditingText] = useState("")
   const [editingColor, setEditingColor] = useState("zinc")
+  const [favoritePendingId, setFavoritePendingId] = useState<string | null>(null)
   const canAdd = newValue.trim().length > 0
 
   function startEdit(option: { id: string; value: string; color: string }) {
@@ -148,6 +157,17 @@ export function OptionListEditor({
     setNewColor("zinc")
   }
 
+  async function handleSetFavorite(option: { id: string; isFavorite: boolean }) {
+    if (option.isFavorite || favoritePendingId) return
+
+    setFavoritePendingId(option.id)
+    try {
+      await onSetFavorite(option.id)
+    } finally {
+      setFavoritePendingId(null)
+    }
+  }
+
   return (
     <article className="rounded-2xl border border-white/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-zinc-900/80">
       <div className="mb-3">
@@ -163,7 +183,7 @@ export function OptionListEditor({
           return (
             <div
               key={option.id}
-              className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/70"
+              className="group/option flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900/70"
             >
               {isEditing ? (
                 /* ── Edit row: text input · color picker · Save · Cancel ── */
@@ -208,6 +228,35 @@ export function OptionListEditor({
                       {option.value}
                     </span>
                   </span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className={cn(
+                      "cursor-pointer transition text-amber-500 hover:bg-amber-100 hover:text-amber-600 dark:text-amber-300 dark:hover:bg-amber-950/40 dark:hover:text-amber-200",
+                      !option.isFavorite &&
+                        "opacity-100 md:opacity-0 md:text-zinc-400 md:group-hover/option:opacity-100 md:group-focus-within/option:opacity-100 dark:md:text-zinc-500"
+                    )}
+                    onClick={() => void handleSetFavorite(option)}
+                    disabled={favoritePendingId === option.id}
+                    aria-label={
+                      option.isFavorite
+                        ? `${option.value} is the default favorite`
+                        : `Set ${option.value} as favorite`
+                    }
+                    aria-pressed={option.isFavorite}
+                    title={
+                      option.isFavorite
+                        ? "Favorite default"
+                        : "Set as favorite default"
+                    }
+                  >
+                    <Star
+                      className={cn(
+                        "size-4",
+                        option.isFavorite ? "fill-current" : ""
+                      )}
+                    />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon-sm"

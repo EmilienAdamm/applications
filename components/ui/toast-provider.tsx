@@ -145,7 +145,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 </p>
                 {toast.description ? (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {toast.description}
+                    {toast.tone === "loading" ? (
+                      <span
+                        className="t-shimmer"
+                        data-text={toast.description}
+                      >
+                        {toast.description}
+                      </span>
+                    ) : (
+                      toast.description
+                    )}
                   </p>
                 ) : null}
               </div>

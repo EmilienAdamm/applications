@@ -22,6 +22,7 @@ export interface UserOption {
   id: string
   value: string
   color: OptionColor
+  isFavorite: boolean
   sortOrder: number
 }
 
@@ -123,6 +124,13 @@ export type TrackerAction =
         currentValue: string
         nextValue: string
         nextColor: string
+      }
+    }
+  | {
+      type: "set_favorite_option"
+      payload: {
+        category: OptionCategory
+        id: string
       }
     }
   | {

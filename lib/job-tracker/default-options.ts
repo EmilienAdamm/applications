@@ -38,7 +38,20 @@ export function isNotAppliedYetStatus(value: string) {
   return normalized === "" || normalized === DEFAULT_STATUS_VALUE
 }
 
+export function getFavoriteOptionValue(options: Array<{ value: string; isFavorite?: boolean }>) {
+  return options.find((option) => option.isFavorite)?.value ?? ""
+}
+
+export function getDefaultOptionFormValue(
+  options: Array<{ value: string; isFavorite?: boolean }>
+) {
+  return getFavoriteOptionValue(options) || (options[0]?.value ?? "")
+}
+
 export function getDefaultStatusFormValue(options: TrackerOptions) {
+  const favorite = getFavoriteOptionValue(options.status)
+  if (favorite) return favorite
+
   const preferred = options.status.find(
     (option) => normalizeStatusValue(option.value) === DEFAULT_STATUS_VALUE
   )
