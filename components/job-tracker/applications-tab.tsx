@@ -5,7 +5,6 @@ import {
   ArrowUp,
   ArrowUpDown,
   ChevronDown,
-  ChevronUp,
   Download,
   Eye,
   ExternalLink,
@@ -211,10 +210,6 @@ export function ApplicationsTab({
     useState<JobPostPreviewState>({ status: "idle" })
   const [duplicateJobOfferWarning, setDuplicateJobOfferWarning] =
     useState<DuplicateJobOfferWarning | null>(null)
-  const [totalApplicationsAnimation, setTotalApplicationsAnimation] = useState({
-    key: 0,
-    expectedTotal: stats.total,
-  })
   const [editingCell, setEditingCell] = useState<{
     id: string
     field: ApplicationFieldKey
@@ -258,10 +253,6 @@ export function ApplicationsTab({
     () => TABLE_COLUMNS.filter((column) => visibleColumns[column.key]),
     [visibleColumns]
   )
-  const totalApplicationsAnimationKey =
-    stats.total >= totalApplicationsAnimation.expectedTotal
-      ? totalApplicationsAnimation.key
-      : 0
   const activeMetadata =
     activeMetadataApplicationId
       ? metadataByApplicationId[activeMetadataApplicationId] ?? null
@@ -608,23 +599,28 @@ export function ApplicationsTab({
         <StatCard
           label="Total applications"
           value={String(stats.total)}
-          valueAnimationKey={totalApplicationsAnimationKey}
+          valueAnimationKey={stats.total + 1}
           hint="All lines currently in your tracker."
         />
         <StatCard
           label="Interviews"
           value={String(stats.interviews)}
+          valueAnimationKey={stats.interviews + 1}
           hint="Rows with an interview-related status."
         />
         <StatCard
           label="Offers"
           value={String(stats.offers)}
+          valueAnimationKey={stats.offers + 1}
           hint="Rows where Final Status is OFFER."
         />
       </div>
 
-      <div className="rounded-2xl border border-white/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-zinc-900/80">
-        <div className="flex items-center justify-between gap-3">
+      <div
+        className="t-acc rounded-2xl border border-white/70 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-zinc-900/80"
+        data-open={isAddLineOpen ? "true" : "false"}
+      >
+        <div className="relative z-10 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold">Add line</h2>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -633,18 +629,27 @@ export function ApplicationsTab({
           </div>
           <Button
             type="button"
+            aria-controls="add-line-panel"
+            aria-expanded={isAddLineOpen}
             variant="outline"
             size="sm"
             onClick={() => setIsAddLineOpen((previous) => !previous)}
-            className="shrink-0"
+            className="t-acc-head shrink-0"
           >
-            {isAddLineOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
             {isAddLineOpen ? "Hide form" : "Show form"}
+            <span className="t-acc-chevron">
+              <ChevronDown className="size-4" />
+            </span>
           </Button>
         </div>
-        {isAddLineOpen ? (
+        <div id="add-line-panel" className="t-acc-panel">
+          <div
+            className="t-acc-panel-inner pt-4"
+            inert={!isAddLineOpen}
+            aria-hidden={!isAddLineOpen}
+          >
           <form
-            className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4"
+            className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
             onSubmit={async (event) => {
               event.preventDefault()
 
@@ -657,7 +662,6 @@ export function ApplicationsTab({
               }
 
               setIsSavingApplication(true)
-              const totalBeforeSave = stats.total
 
               try {
                 await onAddApplication({
@@ -670,10 +674,6 @@ export function ApplicationsTab({
                     : "",
                 })
 
-                setTotalApplicationsAnimation((previous) => ({
-                  key: previous.key + 1,
-                  expectedTotal: totalBeforeSave + 1,
-                }))
                 setForm(buildDefaultForm(options))
                 setJobPostPreviewState({ status: "idle" })
                 setDuplicateJobOfferWarning(null)
@@ -861,7 +861,8 @@ export function ApplicationsTab({
               </Button>
             </div>
           </form>
-        ) : null}
+          </div>
+        </div>
       </div>
 
       <div className="relative rounded-2xl border border-white/70 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-900/80 md:flex md:min-h-0 md:flex-1 md:flex-col">
