@@ -73,6 +73,10 @@ type JobPostPreviewState =
   | { status: "success"; url: string; message: string }
   | { status: "error"; url: string; message: string }
 
+type DuplicateJobOfferWarning = {
+  message: string
+}
+
 interface TableColumn {
   key: ApplicationFieldKey
   label: string
@@ -136,6 +140,52 @@ function buildJobPostPreviewMessage(preview: JobPostLinkPreview) {
   return "Link preview metadata found"
 }
 
+function normalizeJobOfferLinkForCompare(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return ""
+
+  try {
+    const url = new URL(trimmed)
+    url.protocol = url.protocol.toLowerCase()
+    url.hostname = url.hostname.toLowerCase()
+    url.hash = ""
+
+    for (const key of [...url.searchParams.keys()]) {
+      const lowerKey = key.toLowerCase()
+      if (
+        lowerKey.startsWith("utm_") ||
+        lowerKey === "ref" ||
+        lowerKey === "source" ||
+        lowerKey === "src" ||
+        lowerKey === "gh_src"
+      ) {
+        url.searchParams.delete(key)
+      }
+    }
+
+    const sortedParams = [...url.searchParams.entries()].sort(([left], [right]) =>
+      left.localeCompare(right)
+    )
+    url.search = ""
+    for (const [key, paramValue] of sortedParams) {
+      url.searchParams.append(key, paramValue)
+    }
+
+    const normalized = url.toString()
+    return normalized.endsWith("/") ? normalized.slice(0, -1) : normalized
+  } catch {
+    return trimmed.replace(/\/+$/, "")
+  }
+}
+
+function formatAppliedDateForWarning(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return value
+
+  const [, year, month, day] = match
+  return `${day}-${month}-${year}`
+}
+
 export function ApplicationsTab({
   applications,
   metadataByApplicationId,
@@ -159,6 +209,8 @@ export function ApplicationsTab({
   const [isAddLineOpen, setIsAddLineOpen] = useState(false)
   const [jobPostPreviewState, setJobPostPreviewState] =
     useState<JobPostPreviewState>({ status: "idle" })
+  const [duplicateJobOfferWarning, setDuplicateJobOfferWarning] =
+    useState<DuplicateJobOfferWarning | null>(null)
   const [totalApplicationsAnimation, setTotalApplicationsAnimation] = useState({
     key: 0,
     expectedTotal: stats.total,
@@ -312,6 +364,26 @@ export function ApplicationsTab({
     setEditingCell({ id: applicationId, field })
   }
 
+  function findDuplicateJobOfferWarning(url: string): DuplicateJobOfferWarning | null {
+    const normalizedUrl = normalizeJobOfferLinkForCompare(url)
+    if (!normalizedUrl) return null
+
+    const existingApplication = applications.find(
+      (application) =>
+        normalizeJobOfferLinkForCompare(application.jobOfferLink) === normalizedUrl
+    )
+
+    if (!existingApplication) return null
+
+    return {
+      message: `WARNING! You already applied to this offer on ${formatAppliedDateForWarning(existingApplication.dateOfApplication)}`,
+    }
+  }
+
+  function updateDuplicateJobOfferWarning(url: string) {
+    setDuplicateJobOfferWarning(findDuplicateJobOfferWarning(url))
+  }
+
   async function fetchAndApplyJobPostPreview(url: string) {
     if (!automaticFetchEnabled) return
 
@@ -359,6 +431,7 @@ export function ApplicationsTab({
     if (!pastedText) return
 
     event.preventDefault()
+    updateDuplicateJobOfferWarning(pastedText)
     setForm((previous) => ({
       ...previous,
       jobOfferLink: pastedText,
@@ -373,9 +446,11 @@ export function ApplicationsTab({
       jobPostPreviewState.status === "loading" ||
       ("url" in jobPostPreviewState && jobPostPreviewState.url === trimmedUrl)
     ) {
+      updateDuplicateJobOfferWarning(trimmedUrl)
       return
     }
 
+    updateDuplicateJobOfferWarning(trimmedUrl)
     void fetchAndApplyJobPostPreview(trimmedUrl)
   }
 
@@ -601,6 +676,7 @@ export function ApplicationsTab({
                 }))
                 setForm(buildDefaultForm(options))
                 setJobPostPreviewState({ status: "idle" })
+                setDuplicateJobOfferWarning(null)
               } finally {
                 setIsSavingApplication(false)
               }
@@ -662,8 +738,10 @@ export function ApplicationsTab({
                   ...previous,
                   jobOfferLink: nextValue,
                 }))
+                updateDuplicateJobOfferWarning(nextValue)
                 if (!nextValue.trim()) {
                   setJobPostPreviewState({ status: "idle" })
+                  setDuplicateJobOfferWarning(null)
                 }
               }}
               onPaste={handleJobOfferLinkPaste}
@@ -689,6 +767,12 @@ export function ApplicationsTab({
                 {jobPostPreviewState.status === "loading"
                   ? "Reading link preview..."
                   : jobPostPreviewState.message}
+              </span>
+            ) : null}
+            {duplicateJobOfferWarning ? (
+              <span className="flex min-h-5 items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300">
+                <AlertCircle className="size-3.5" />
+                {duplicateJobOfferWarning.message}
               </span>
             ) : null}
           </label>
